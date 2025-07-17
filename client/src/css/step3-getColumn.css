@@ -1,0 +1,223 @@
+.select-class-section{
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px; /* Space between sections */
+}
+
+/* Container for sample column and search button */
+.sample-column-section {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 20px;
+}
+
+/* Change dropdown container layout */
+.dropdown-container {
+  margin: 20px 0;
+  display: flex;
+  flex-direction: column; /* Arrange as column */
+  gap: 20px; /* Space between elements */
+  width: 100%;
+}
+
+/* New row for side-by-side dropdowns */
+.dropdowns-row {
+  display: flex;
+  flex-direction: row;
+  gap: 30px; /* Space between two dropdowns */
+  justify-content: flex-start; /* Align dropdowns to left */
+
+}
+
+/* Update search button container */
+.search-button-container {
+  margin-top: 18px; /* Align with dropdown */
+  display: flex;
+  justify-content: flex-start;
+}
+
+  
+/* Fixed width for column dropdown boxes */
+.column-dropdowns {
+  width: 350px; /* Fixed width */
+  min-width: 350px; /* Minimum width */
+  flex-shrink: 0; /* Prevent shrinking */
+}
+
+
+
+.dropdown-with-search {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+/* Keep search button text on a single line */
+.search-column-button {
+  background-color: #e3f2fd;
+  border: 1px solid #90caf9;
+  border-radius: 4px;
+  padding: 10px 5px; /* Reduced left/right padding */
+  font-size: 16px;
+  color: #1976D2;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-align: center;
+  width: 400px;
+  max-width: 400px;
+  height: 41px;
+  font-weight: 600;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  margin-left: 40px;
+  white-space: nowrap; /* Keep text on one line */
+  overflow: hidden; /* Hide overflowed text */
+  text-overflow: ellipsis; /* Show ... for overflowed text */
+}
+
+
+.search-column-button:hover {
+  background-color: #bbdefb;
+  border-color: #64b5f6;
+  color: #1565C0;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  transform: translateY(-1px);
+}
+
+.search-column-button:active {
+  background-color: #90caf9;
+  transform: translateY(0);
+}
+
+/* Fix label alignment */
+.column-dropdowns label {
+  font-weight: bold;
+  color: #333;
+  margin-left: 0; /* Changed from 40px to 0 for left alignment */
+  white-space: nowrap;
+  display: block;
+  font-size: 15px;
+  padding-left: 40px; /* Use padding instead of margin */
+}
+
+
+/* Increase width for selected column message for better visibility */
+.info-message-step3 {
+  margin-top: 10px;
+  margin-left: 40px;
+  margin-right: 40px;
+  padding: 10px;
+  background-color: #f4f4f9;
+  border-left: 5px solid #4caf50;
+  color: #0c5460;
+  font-size: 15px;
+  border-radius: 5px;
+  white-space: normal; /* Use normal instead of nowrap */
+  width: 300px; /* Fixed width */
+  overflow-wrap: break-word; /* Line break for long words */
+}
+
+.column-selection-area {
+  display: flex;
+  gap: 40px; /* Space between Patient Group and Sample ID blocks */
+  padding: 20px 40px; /* Add padding around the selection blocks */
+  background-color: #f8f9fa; /* Light background like step 6 */
+  border-radius: 8px;
+  margin-top: 20px;
+  border: 1px solid #e9ecef;
+}
+
+.column-select-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px; /* Space between label, display, and button */
+}
+
+.column-select-block label {
+  font-weight: bold;
+  color: #333;
+  font-size: 15px;
+  margin-bottom: 5px; /* Space below label */
+}
+
+.selected-column-display {
+  padding: 10px;
+  background-color: #fff;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  min-height: 40px; /* Ensure it has some height */
+  display: flex;
+  align-items: center;
+  width: 300px; /* Match dropdown width */
+  box-sizing: border-box;
+}
+
+.selected-column-display .placeholder {
+  color: #999;
+  font-style: italic;
+}
+
+.select-column-button {
+  /* Use general button styles or define specific ones */
+  padding: 10px 15px;
+  font-size: 1rem;
+  background-color: #007bff; /* Example primary color */
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  width: 300px; /* Match display width */
+  box-sizing: border-box;
+}
+
+.select-column-button:hover {
+  background-color: #0056b3;
+}
+
+.select-column-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+/* Removed margin to align dropdowns from the same start */
+#illnessColumnDropdown, #sampleColumnDropdown {
+  width: 300px;
+  max-width: 300px;
+  padding: 10px;
+  margin-left: 40px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 16px;
+  color: #555;
+  background-color: #fff;
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+#illnessColumnDropdown:focus {
+  border-color: #4caf50;
+  box-shadow: 0 0 5px rgba(76, 175, 80, 0.5);
+  outline: none;
+}
+
+/* Option styling */
+#illnessColumnDropdown option {
+  font-size: 16px;
+  padding: 8px;
+}
+
+
+#sampleColumnDropdown:focus {
+    border-color: #4caf50;
+    box-shadow: 0 0 5px rgba(76, 175, 80, 0.5);
+    outline: none;
+}
+
+/* Option styling */
+#sampleColumnDropdown option {
+    font-size: 16px;
+    padding: 8px;
+}

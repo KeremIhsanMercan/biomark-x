@@ -1,0 +1,148 @@
+/* Modal Overlay */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000; /* Should be above other elements */
+  }
+  
+  /* Modal Content */
+  .modal-content {
+    background-color: #fff;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    max-width: 600px; /* Or any desired width */
+    width: 90%;
+    max-height: 80vh; /* Limit height */
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  
+  /* Especially for NonFeatureColumnModal */
+  .modal-content.non-feature-modal {
+      max-width: 500px; /* Slightly narrower */
+  }
+  
+  /* Close Button */
+  .close-modal-button {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 2rem;
+    cursor: pointer;
+    color: #aaa;
+  }
+  .close-modal-button:hover {
+    color: #333;
+  }
+  
+  
+  /* Modal Title */
+  .modal-content h2 {
+    margin-top: 0;
+    margin-bottom: 20px;
+    text-align: center;
+    color: #333;
+  }
+  
+  /* Fetch Button */
+  .fetch-all-columns-button {
+    margin-bottom: 15px;
+    padding: 10px 15px;
+  }
+  
+  /* Search Input */
+  .search-input {
+    width: calc(100% - 22px); /* Account for padding */
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+  }
+  
+  /* Column List */
+  .column-list {
+    max-height: 40vh; /* Scroll for list */
+    overflow-y: auto;
+    border: 1px solid #eee;
+    padding: 10px;
+    margin-bottom: 20px;
+    background-color: #f9f9f9;
+  }
+  
+  /* Column Item */
+  .column-item {
+    padding: 8px 5px;
+    border-bottom: 1px solid #eee;
+  }
+  .column-item:last-child {
+    border-bottom: none;
+  }
+  
+  .column-item label {
+    display: flex; /* Align checkbox and text */
+    align-items: center;
+    cursor: pointer;
+  }
+  
+  .column-item input[type="checkbox"] {
+    margin-right: 10px;
+  }
+  
+  /* Loading and Error Messages */
+  .loading-message, .error-message {
+      padding: 10px;
+      margin-bottom: 15px;
+      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+  }
+  
+  .error-message {
+      color: #dc3545; /* Red */
+      background-color: #f8d7da;
+      border: 1px solid #f5c6cb;
+      border-radius: 4px;
+  }
+  
+  .loading-message .spinner {
+      margin-right: 10px;
+  }
+  
+  
+  /* Modal Actions (Done button container) */
+  .modal-actions {
+      display: flex;
+      justify-content: flex-end; /* Align button to right */
+      margin-top: 15px;
+  }
+  
+  /* General Button Styling (can inherit from App.css if available) */
+  .button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    margin-left: 10px; /* Space between buttons */
+  }
+  
+  .button-primary {
+    background-color: #007bff;
+    color: white;
+  }
+  .button-primary:hover {
+    background-color: #0056b3;
+  }

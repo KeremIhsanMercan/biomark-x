@@ -1,0 +1,298 @@
+.show-analysis-results{
+    padding: 20px;
+    padding-top: 0;
+    margin-top: 70px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px; /* Gap between sections */
+}
+
+.analysis-information {
+    border: 2px solid #4caf50;
+    border-radius: 20px;
+    background-color: #ffffff;
+    padding: 10px;
+    margin: 5px 0;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.analysis-title {
+    font-size: 15px;
+    font-weight: bold;
+    color: #4caf50;
+    margin-top: 1px;
+    margin-bottom: 5px;
+    text-align: center;
+}
+
+.analysis-details {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 12px;
+}
+
+.analysis-detail {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid #ddd;
+    padding: 5px 0;
+}
+
+.detail-label {
+    font-weight: bold;
+    color: #555;
+}
+  
+.detail-value {
+    color: #4caf50;
+    font-style: italic;
+    padding-left: 20px;
+}
+
+.result-block-container{
+  display: flex;
+  flex-direction: column;
+  gap: 20px; /* Gap between images */
+  margin-top: 30px; /* Increased top margin */
+}
+
+.result-block {
+  display: flex;
+  flex-direction: column; /* Stack vertically */
+  justify-content: center;
+  align-items: center; /* Center content horizontally */
+  text-align: center; /* Center text */
+  padding-top: 10px;
+  max-width: 60%; /* Default width limit */
+}
+/* Until here is for app.js, below is for ImagePopup.js */
+
+/* Post Analysis Options */
+.post-analysis-options {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center content horizontally */
+    justify-content: center; /* Center content vertically */
+}
+  
+.post-analysis-options .button {
+  font-size: 16px;
+  width: 60%;
+  padding: 10px 10px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.3s ease-in-out;
+  text-align: center;
+}
+  
+.post-analysis-options .perform-analysis {
+  background-color: #f08080; /* Reddish color */
+  color: black;
+  font-weight: bold;
+  margin-top: 30px;
+}
+
+.post-analysis-options .perform-analysis:hover {
+  background-color: #d07070;
+}
+
+.post-analysis-options .start-over {
+  background-color: #ffd700; /* Gold color */
+  color: black;
+  font-weight: bold;
+  margin-bottom: 20px;
+}
+
+.post-analysis-options .start-over:hover {
+  background-color: #ffc700;
+}
+
+/* Summarize Statistical Methods butonu için stiller */
+.post-analysis-options .summarize-statistical-methods {
+  background-color: #90ee90; /* Light green color - harmonizes with perform analysis (reddish) and start over (yellow) buttons */
+  color: black;
+  padding: 10px 15px; /* Example padding, can be adjusted as needed */
+  margin: 10px auto; /* Top/bottom margin and horizontally centered */
+  font-weight: bold;
+  margin: 20px auto; /* Top and bottom margin, auto horizontal centering */
+  display: block; /* Make it a block element */
+  width: auto; /* Limit width */
+  min-width: 350px; /* Minimum width */
+  white-space: nowrap; /* Prevent text from wrapping (optional, width: auto is usually enough) */
+  display: block; /* Ensures button sizes to content instead of full width */
+
+}
+
+.post-analysis-options .summarize-statistical-methods:hover {
+  background-color: #7edb7e; /* Slightly darker green on hover */
+}
+
+.post-analysis-options .summarize-statistical-methods:disabled {
+  background-color: #cccccc;
+  color: #666666;
+  cursor: not-allowed;
+}
+
+/* OR yazısını tam ortaya almak için */
+.or-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center; /* Center 'OR' text horizontally */
+  justify-content: center; /* Vertical alignment */
+  margin: 10px 0; /* Margin from buttons */
+}
+
+.or-text {
+  font-size: 20px;
+  font-weight: bold;
+  text-align: center;
+}
+
+/* Feature Count Selector Styles */
+.feature-count-selector {
+  margin: 10px 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.feature-count-selector label {
+  margin-right: 10px;
+  font-weight: bold;
+}
+
+.feature-count-dropdown {
+  padding: 8px;
+  border-radius: 4px;
+  border: 1px solid #ccc;
+  background-color: white;
+  font-size: 14px;
+  min-width: 80px;
+  cursor: pointer;
+  outline: none;
+}
+
+.feature-count-dropdown:hover {
+  border-color: #888;
+}
+
+.feature-count-dropdown:focus {
+  border-color: #4299e1;
+  box-shadow: 0 0 0 2px rgba(66, 153, 225, 0.2);
+}
+
+
+/* Sınıf çifti seçim modalı için stiller */
+.class-pair-selection-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+  
+.class-pair-selection-content {
+    background-color: white;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+    max-width: 500px;
+    width: 90%;
+    text-align: center;
+    position: relative; /* For absolutely positioned close button */
+}
+  
+.class-pair-selection-content h3 {
+    margin-top: 0;
+    color: #333;
+    font-size: 22px;
+}
+  
+.class-pair-selection-content p {
+    margin-bottom: 20px;
+    color: #666;
+}
+  
+.class-pair-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.class-pair-button {
+    background-color: #f8f9fa;
+    border: 1px solid #ddd;
+    padding: 10px 15px;
+    border-radius: 5px;
+    transition: all 0.2s;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+.class-pair-button:hover {
+    background-color: #007bff;
+    color: white;
+    border-color: #007bff;
+}
+
+.class-pair-button:disabled {
+    background-color: #f0f0f0;
+    color: #999999;
+    cursor: not-allowed;
+    border-color: #dddddd;
+}
+  
+.class-pair-button:disabled:hover {
+    background-color: #f0f0f0;
+    color: #999999;
+    border-color: #dddddd;
+}
+  
+.close-modal-button {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #777;
+    line-height: 1;
+    padding: 5px 10px;
+}
+
+.close-modal-button:hover {
+    color: #333;    
+}
+
+/* Summary Image Container Styles */
+.summarize-analyses-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.summary-analysis-block {
+  margin-bottom: 20px;
+}
+
+.summary-image-container {
+  margin-top: 30px;
+  margin-bottom: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  text-align: center;
+}

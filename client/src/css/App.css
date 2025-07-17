@@ -1,0 +1,22 @@
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
+
+@import './spinner.css';
+@import './step0-header.css';
+@import './step1-browseFile.css';
+@import './step1_InputFormatPopup.css';
+@import './step2-uploadFile.css';
+@import './step3-getColumn.css';
+@import './step3_ColumnSearchModal.css';
+@import './step4-selectClass.css';
+@import './step5-selectAnalysis.css';
+@import './step6-selectFeature.css';
+@import './step6_modal.css';
+@import './step7-runAnalysis.css';
+@import './step8_0-showGraph.css';
+@import './step8_1-zoomGraph.css';
+@import './step8_2-showParameters.css';
+@import './step8_3-showStatistics.css';
+@import './step9-generateAnalysisReport.css';

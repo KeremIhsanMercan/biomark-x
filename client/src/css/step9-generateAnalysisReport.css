@@ -1,0 +1,263 @@
+/* AnalysisReport.css - Professional PDF Report Component Styles */
+
+.generate-report-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #4a6da7; /* Professional blue color */
+  color: white;
+  font-weight: 600;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  margin: 20px auto;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  width: auto;
+  min-width: 250px;
+}
+
+.generate-report-button:hover {
+  background-color: #3a5a8f;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.generate-report-button:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 3px rgba(0, 0, 0, 0.1);
+}
+
+.report-icon {
+  font-style: normal;
+  margin-right: 10px;
+  font-size: 20px;
+}
+
+/* Report template - normally hidden but needs to be converted to HTML */
+.hidden-report-template {
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+  width: 210mm; /* A4 width */
+  background: white;
+  padding: 20mm;
+  box-sizing: border-box;
+}
+
+.report-content {
+  font-family: 'Helvetica', Arial, sans-serif;
+  color: #333;
+  line-height: 1.6;
+}
+
+.report-header {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.report-header h1 {
+  font-size: 28px;
+  color: #333;
+  margin-bottom: 15px;
+}
+
+.report-header h2 {
+  font-size: 16px;
+  color: #666;
+  font-style: italic;
+  margin-bottom: 20px;
+}
+
+.report-section {
+  margin-bottom: 40px;
+}
+
+.report-section h3 {
+  font-size: 16px;
+  color: #444;
+  margin-bottom: 15px;
+  padding-bottom: 5px;
+  border-bottom: 1px solid #4A6DA7;
+}
+
+.summary-info {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.info-row {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+
+.info-row .label {
+  font-weight: bold;
+  min-width: 120px;
+  color: #555;
+}
+
+.info-row .value {
+  color: #666;
+}
+
+.summary-image {
+  margin: 20px 0;
+  text-align: center;
+}
+
+.summary-image img {
+  max-width: 100%;
+  height: auto;
+}
+
+.analysis-result {
+  margin-bottom: 30px;
+}
+
+.analysis-result h4 {
+  font-size: 14px;
+  color: #555;
+  margin-bottom: 15px;
+}
+
+.result-image {
+  margin-bottom: 20px;
+}
+
+.image-caption {
+  font-size: 10px;
+  color: #666;
+  font-style: italic;
+  margin-bottom: 5px;
+}
+
+.result-image img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+  margin: 0 auto;
+}
+
+.report-footer {
+  text-align: center;
+  margin-top: 40px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
+  font-size: 8px;
+  color: #999;
+}
+
+/* PDF loading overlay */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.9);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+/* PDF loading spinner */
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid #f3f3f3;
+  border-top: 5px solid #4A6DA7;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 20px;
+}
+
+.loading-text {
+  font-size: 16px;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Media print styles for result images (HTML version for PDF) */
+@media print {
+  .result-image {
+    max-width: 100%;
+    page-break-inside: avoid;
+  }
+  
+  .report-section {
+    page-break-before: always;
+  }
+  
+  .report-section:first-child {
+    page-break-before: avoid;
+  }
+  
+  .report-header {
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  
+  .report-title {
+    font-size: 24px;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 5px;
+  }
+  
+  .report-date {
+    font-size: 14px;
+    color: #666;
+  }
+  
+  .report-summary {
+    border: 1px solid #ddd;
+    padding: 15px;
+    margin-bottom: 20px;
+    background-color: #f9f9f9;
+  }
+  
+  .summary-item {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  
+  .summary-label {
+    font-weight: bold;
+  }
+}
+
+/* Progress bar styles */
+.progress-bar {
+  width: 200px;
+  height: 4px;
+  background: #f3f3f3;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: #4A6DA7;
+  transition: width 0.3s ease;
+}
+
+/* Generate Report Button - disabled state */
+.generate-report-button:disabled {
+  background-color: #b9c5d9;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+} 

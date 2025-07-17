@@ -1,0 +1,223 @@
+.select-analysis-section{
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px; /* Space between sections */
+}
+
+.analysis-selection{
+  display: flex;
+  flex-direction: column;
+}
+
+.analysis-tables{
+  display: flex;
+}
+
+.analysis-category {
+  margin: 20px 40px;
+  border: 1px solid #ccc;
+  padding: 10px;
+  border-radius: 5px;
+  background-color: #f9f9f9;
+}
+
+.analysis-category h4 {
+  background-color: #cfe2f3;
+  padding: 10px;
+  text-align: center;
+  margin: 0 -10px 10px;
+  border-radius: 5px 5px 0 0;
+}
+
+.analysis-selection table {
+  width: 100%;
+  margin-right: 20px;
+  border-collapse: collapse;
+}
+
+.analysis-selection td {
+  padding: 10px;
+  border: 1px solid #ddd;
+  text-align: center;
+  cursor: pointer;
+}
+
+.analysis-selection tr.selected {
+  background-color: #6495ed;
+  color: white;
+}
+
+.analysis-selection button {
+  margin-top: 20px;
+  padding: 10px 20px;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  position: relative;
+  left: 40px;
+  bottom: 30px;
+}
+
+.analysis-selection button:hover {
+  background-color: #a04545;
+}
+
+.analysis-button {
+  margin-top: 20px;
+  text-align: center;
+}
+
+/* Parameter Settings Styles */
+.parameter-settings {
+  margin: 20px 40px;
+  border: 1px solid #ccc;
+  padding: 20px;
+  border-radius: 5px;
+  background-color: #f9f9f9;
+  width: calc(100% - 80px);
+}
+
+.parameter-settings h4 {
+  background-color: #e2f3cf;
+  padding: 10px;
+  text-align: center;
+  margin: -20px -20px 20px;
+  border-radius: 5px 5px 0 0;
+}
+
+.selected-method-info {
+  font-weight: bold;
+  font-size: 16px;
+  margin-bottom: 15px;
+  padding: 10px;
+  background-color: #e9ecef;
+  border-radius: 4px;
+}
+
+.param-container {
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  padding: 15px;
+  margin-bottom: 15px;
+}
+
+.param-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.param-row {
+  display: flex;
+  margin-bottom: 8px;
+  align-items: center;
+}
+
+.param-label {
+  width: 300px;
+  padding: 5px;
+  font-weight: bold;
+  color: #555;
+  position: relative;
+  cursor: help;
+}
+
+.param-label:hover .param-tooltip {
+  visibility: visible;
+  opacity: 1;
+}
+
+/* Parameter tooltip styles */
+.param-tooltip {
+  visibility: hidden;
+  width: 280px;
+  background-color: #2c3e50;
+  color: #fff;
+  text-align: left;
+  border-radius: 6px;
+  padding: 8px 12px;
+  position: absolute;
+  z-index: 1;
+  bottom: 125%;
+  left: 0;
+  margin-left: -60px;
+  opacity: 0;
+  transition: opacity 0.3s;
+  font-weight: normal;
+  font-size: 13px;
+  line-height: 1.4;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.15);
+}
+
+.param-tooltip::after {
+  content: "";
+  position: absolute;
+  top: 100%;
+  left: 25%;
+  margin-left: -5px;
+  border-width: 5px;
+  border-style: solid;
+  border-color: #2c3e50 transparent transparent transparent;
+}
+
+.param-input {
+  flex: 1;
+}
+
+.param-input select {
+  width: 90%;
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 14px;
+}
+
+.param-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+
+.default-param-option {
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.default-param-option button {
+  padding: 8px 15px;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin: 0;
+  position: static;
+}
+
+.default-param-option button:hover {
+  background-color: #5a6268;
+}
+
+.param-update-button {
+  text-align: center;
+  margin-top: 15px;
+}
+
+.param-update-button button {
+  padding: 8px 15px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  margin: 0;
+  position: static;
+}
+
+.param-update-button button:hover {
+  background-color: #0069d9;
+}

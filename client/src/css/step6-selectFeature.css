@@ -1,0 +1,181 @@
+.step-and-instruction-step6 {
+  display: flex;
+  align-items: center;
+  gap: 15px; /* Space between step circle and text */
+  padding-left: 20px;
+}
+
+.info-message-step6 {
+  background-color: #d4edda;
+  color: #155724;
+  padding: 12px 15px;
+  margin: 10px 0 20px 0;
+  border-radius: 5px;
+  font-size: 1rem;
+  text-align: center;
+  border-left: 4px solid #28a745;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  animation: fadeInFadeOut 3s ease-in-out;
+}
+
+@keyframes fadeInFadeOut {
+  0% { opacity: 0; transform: translateY(-10px); }
+  15% { opacity: 1; transform: translateY(0); }
+  85% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-10px); }
+}
+
+/* Step 6 Container (Optional: for specific spacing/styling) */
+.step-six-container {
+  /* Add any specific styles for the step 6 container */
+  margin-bottom: 30px; /* Example spacing */
+}
+
+.step-six-container .step-description {
+  font-size: 14px; /* Slightly more readable size */
+  color: #110351; /* Softer color */
+  margin-top: 5px; /* Space above */
+  margin-bottom: 15px; /* Space below */
+  padding: 10px; /* Inner padding */
+  background-color: #f9f9f9; /* Light background */
+  border-left: 3px solid #007bff; /* Left highlight bar */
+  line-height: 1.5; /* Line height */
+  max-width: 90%; /* Limit width (optional) */
+  text-align: left; /* Align text left */
+}
+
+/* Area containing the button and selected tags */
+.non-feature-selection-area {
+  margin-top: 20px;
+  padding: 20px;
+  background-color: #f8f9fa; /* Light background */
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start; /* Align items to the start */
+}
+
+/* Style for the 'Specify Non-Feature Columns' button */
+.specify-non-feature-button {
+  background-color: #17a2b8; /* Teal color */
+  color: white;
+  padding: 12px 25px;
+  font-size: 1.1rem;
+  border-radius: 6px;
+  transition: background-color 0.3s ease;
+  display: inline-flex; /* Align badge correctly */
+  align-items: center;
+  margin-bottom: 15px; /* Space below the button */
+}
+
+.specify-non-feature-button:hover {
+  background-color: #138496; /* Darker teal */
+}
+
+.specify-non-feature-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}
+
+/* Badge inside the button showing the count */
+.selected-count-badge {
+  background-color: rgba(255, 255, 255, 0.3); /* Semi-transparent white */
+  color: white;
+  padding: 3px 8px;
+  border-radius: 10px; /* Pill shape */
+  font-size: 0.85rem;
+  margin-left: 10px;
+  font-weight: bold;
+}
+
+/* Container for the selected non-feature tags */
+.selected-non-features-container {
+  margin-top: 10px;
+  margin-bottom: 20px; /* Add space below tags before confirm button */
+  width: 100%;
+  display: flex; /* Use flexbox for alignment */
+  flex-wrap: wrap; /* Allow tags to wrap to the next line */
+  align-items: center; /* Vertically align label and tags */
+  gap: 8px; /* Spacing between label and tags, and between tags */
+}
+
+/* Label before the tags */
+.selected-label {
+  font-weight: bold;
+  color: #555;
+  margin-left: 10px; /* Space between label and first tag */
+}
+
+/* Individual tag styling (adjust padding for the button) */
+.non-feature-tag {
+  display: inline-flex; /* Use flex to align text and button */
+  align-items: center; /* Vertically center items */
+  background-color: #e9ecef;
+  color: #495057;
+  padding: 6px 8px 6px 12px; /* Adjust right padding */
+  border-radius: 15px;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  border: 1px solid #ced4da;
+  /* gap: 5px; /* Optional: space between text and button via flex gap */
+}
+
+/* Remove button inside the tag */
+.non-feature-tag-remove {
+  display: inline-flex; /* Ensure it behaves like an inline element */
+  align-items: center;
+  justify-content: center;
+  width: 16px; /* Fixed size */
+  height: 16px; /* Fixed size */
+  margin-left: 8px; /* Space between text and button */
+  padding: 0;
+  border: none;
+  background-color: #adb5bd; /* Grey background */
+  color: white; /* White 'x' */
+  border-radius: 50%; /* Make it circular */
+  cursor: pointer;
+  font-weight: bold;
+  font-size: 0.8rem; /* Adjust size of 'x' */
+  line-height: 1; /* Ensure 'x' is centered vertically */
+  transition: background-color 0.2s ease;
+}
+
+.non-feature-tag-remove:hover {
+  background-color: #dc3545; /* Red background on hover */
+}
+
+.non-feature-tag-remove:focus {
+  outline: none; /* Remove default focus outline */
+  box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.5); /* Add custom focus style */
+}
+
+/* Optional: Info text styling */
+.info-text {
+  color: #6c757d;
+  font-size: 0.9rem;
+  margin-top: 5px;
+}
+
+/* Style for the new 'Confirm Non-Feature Selection' button */
+.confirm-non-feature-button {
+  background-color: #28a745; /* Green color for confirmation */
+  color: white;
+  padding: 12px 25px;
+  font-size: 1.1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+  margin-top: 15px; /* Add space above the button */
+  /* Align with the specify button or center it if needed */
+}
+
+.confirm-non-feature-button:hover {
+  background-color: #218838; /* Darker green */
+}
+
+.confirm-non-feature-button:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+}

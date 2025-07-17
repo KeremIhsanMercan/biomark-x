@@ -1,0 +1,51 @@
+/* Specific styles for the SingleColumnSelectModal */
+
+/* Add a class to the modal content for specific targeting if needed */
+.modal-content.single-column-modal {
+  /* You can adjust width/height or other general modal styles here if needed */
+  max-width: 550px; /* Example adjustment */
+}
+
+/* Style for individual column items in single-select mode */
+.column-item.single-select-item {
+  padding: 10px 12px; /* Slightly more padding */
+  cursor: pointer; /* Indicate it's clickable */
+  transition: background-color 0.2s ease;
+  border-bottom: 1px solid #eee;
+}
+
+.column-item.single-select-item:last-child {
+  border-bottom: none;
+}
+
+.column-item.single-select-item:hover {
+  background-color: #f0f0f0; /* Lighter hover effect */
+}
+
+/* Style for the selected column item */
+.column-item.single-select-item.selected {
+  background-color: #d4edda; /* A light green background for selected */
+  color: #155724; /* Darker text color for selected */
+  font-weight: bold;
+}
+
+/* Ensure the fetch button is styled appropriately */
+.fetch-all-columns-button {
+    margin-bottom: 15px;
+    padding: 10px 15px;
+    /* Inherits button styles, add specifics if needed */
+}
+
+/* Loading message styling (if not already covered) */
+.loading-message {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 15px;
+    color: #555;
+    font-style: italic;
+}
+
+.loading-message .spinner {
+    margin-right: 10px;
+} 

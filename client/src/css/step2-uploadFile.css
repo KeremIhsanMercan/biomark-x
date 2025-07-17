@@ -1,0 +1,70 @@
+.file-upload-section {
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 5px; /* Space between sections */
+}
+
+.uploaded-info {
+    font-size: 20px;
+    color: green;
+    font-weight: bold;
+    padding-left: 10px;
+    margin-top: 30px;
+}
+
+.loading-message {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 10px 0;
+    font-size: 16px;
+    color: #555;
+}
+  
+.loading-message .spinner {
+    margin-right: 10px;
+}
+
+.upload-button {
+    background-color: #cfcfcf;
+    margin-top: 20px;
+    padding: 10px 20px;
+    border-radius: 5px;
+    width: 25%;
+    border: 1px solid #ccc;
+    cursor: pointer;
+    font-size: 16px;
+}
+    
+.upload-button:hover {
+    background-color: #0033b4;
+}
+
+/* Style for other loading state */
+.file-is-loading {
+    display: flex;
+    align-items: center;
+    margin-top: 10px;
+    color: #3498db;
+    font-weight: 500;
+}
+
+.error-message {
+    color: #721c24;
+    background-color: #f8d7da;
+    border-color: #f5c6cb;
+    padding: 10px;
+    margin: 10px 0;
+}
+
+/* Upload duration text */
+.upload-duration {
+    font-size: 16px; /* Smaller than uploaded-info (20px) */
+    color: green;
+    padding-left: 10px;
+    margin-top: 5px;
+}
+
+  

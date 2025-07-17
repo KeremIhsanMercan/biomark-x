@@ -1,0 +1,119 @@
+.bar-chart-with-selection {
+    display: flex;
+    gap: 80px;
+    align-items: flex-start;
+    padding-left: 150px;
+}
+
+.chart-container {
+  width: 40%;
+}
+  
+.chart-image {
+  max-width: 100%;
+  border: 2px solid #ccc;
+  border-radius: 5px;
+}
+
+.class-selection {
+  width: 25%;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  padding: 10px;
+  margin-bottom: 70px;
+  background-color: #fffacd; /* Yellow background */
+}
+
+.class-selection h3 {
+  background-color: #ffcc66; /* Header background */
+  padding: 10px;
+  text-align: center;
+}
+
+.class-selection table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+.class-selection tr {
+  cursor: pointer;
+  text-align: center;
+}
+
+.class-selection tr.selected {
+  background-color: #6495ed; /* Blue color (selected) */
+  color: white;
+}
+
+.class-selection td {
+  padding: 10px;
+  border: 1px solid #ccc;
+}
+
+.class-selection button {
+  margin-top: 20px;
+  padding: 10px 20px;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.class-selection button:hover {
+  background-color: #45a049;
+}
+
+/* Styles for displaying selected classes */
+.selected-classes-display {
+  margin: 0px auto;
+  background-color: #eaf4ff;
+  padding: 15px 20px;
+  border-radius: 8px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+  width: 100%;
+  max-width: 600px;
+  border-left: 5px solid #4285f4;
+}
+
+.selected-classes-display h3 {
+  margin-top: 0;
+  font-size: 18px;
+  color: #2c5282;
+  font-weight: 600;
+}
+
+.selected-classes-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.selected-class-item {
+  display: flex;
+  align-items: center;
+  background-color: #e8f1ff;
+  border: 1px solid #c8d8ff;
+  border-radius: 6px;
+  padding: 10px 15px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.selected-class-name {
+  font-weight: 600;
+  color: #2c5282;
+  margin-right: 10px;
+  font-size: 16px;
+}
+
+.selected-badge {
+  background-color: #4285f4;
+  color: white;
+  font-size: 12px;
+  padding: 3px 8px;
+  border-radius: 12px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}

@@ -1,0 +1,53 @@
+@media (max-width: 600px) {
+  /* General resets for small screens */
+  body {
+    padding: 0 8px; /* Small horizontal padding */
+    overflow-x: hidden; /* Prevent horizontal scroll */
+  }
+
+  /* Make most block elements take the full available width */
+  button,
+  select,
+  input,
+  textarea,
+  .column-dropdowns,
+  .search-column-button,
+  .selected-column-display,
+  .select-column-button,
+  #illnessColumnDropdown,
+  #sampleColumnDropdown,
+  .info-message-step3 {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+  }
+
+  /* Stack flex rows into columns for narrow screens */
+  .sample-column-section,
+  .dropdowns-row,
+  .column-selection-area {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+
+  /* Tables and graphs should be scrollable if they overflow */
+  table,
+  .table-responsive {
+    display: block;
+    overflow-x: auto;
+    width: 100%;
+  }
+
+  /* Images and canvases should never exceed the viewport */
+  img,
+  canvas {
+    max-width: 100%;
+    height: auto;
+  }
+  /* Add extra spacing below main content for mobile */
+  .main-content {
+    margin-bottom: 24px;
+  }
+} 

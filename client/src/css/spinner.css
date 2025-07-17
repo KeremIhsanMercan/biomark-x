@@ -1,0 +1,39 @@
+/* Spinner/Loading Animation */
+.spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    margin-right: 10px;
+    border: 3px solid rgba(0, 0, 0, 0.1);
+    border-radius: 50%;
+    border-top-color: #3498db;
+    animation: spinner 1s ease-in-out infinite;
+    vertical-align: middle;
+  }
+  
+@keyframes spinner {
+  to {
+    transform: rotate(360deg);
+  }
+}
+    
+/* Style for analysis running status */
+.analysis-running {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 20px 0;
+  padding: 15px;
+  background-color: #e8f4fd;
+  border-radius: 8px;
+  color: #2980b9;
+  font-weight: 500;
+  font-size: 18px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+  
+.analysis-running .spinner {
+  width: 24px;
+  height: 24px;
+  border-width: 4px;
+}
