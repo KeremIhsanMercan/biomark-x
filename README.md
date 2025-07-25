@@ -34,8 +34,7 @@ This repository contains the source code for the frontend and backend components
 
 If you use BioMark in your research, please cite our work.
 
-*> [Makaleniz yayınlandığında buraya tam bibliyografik künyeyi ekleyebilirsiniz. Şimdilik PDF'e yönlendirmek yeterlidir.]*
-
+...
 ## 📝 License
 
 This project is licensed under the MIT License. See the [LICENSE](./LICENSE) file for details.
