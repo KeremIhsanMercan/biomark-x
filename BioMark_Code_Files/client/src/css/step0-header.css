@@ -1,0 +1,97 @@
+.app-header {
+    background-color: #d8dbec;
+    color: #333;
+    text-align: center;
+    padding: 15px 30px;
+    font-size: 24px;
+    font-weight: 600;
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 1000;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    font-family: 'Poppins', sans-serif;
+}
+
+.app-header img {
+    height: 40px;
+    width: auto;
+}
+
+.app-header span {
+    color: #0056FF;
+    text-align: center;
+    letter-spacing: 0.5px;
+}
+
+.user-guide-link {
+    position: absolute;
+    padding-right: 50px;
+    right: 30px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: #0056FF;
+    font-size: 14px;
+    cursor: pointer;
+    font-family: 'Poppins', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.1;
+    text-decoration: underline;
+}
+
+.user-guide-link span {
+    display: block;
+}
+
+.user-guide-link:hover {
+    text-decoration: none;
+}
+
+/* Hide header when printing and show a custom print header */
+@media print {
+    .app-header {
+        display: none !important;
+    }
+
+    body::before {
+        content: "";
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 15px;
+        position: relative;
+        background-color: #4e67f5;
+        color: #333;
+        text-align: center;
+        padding: 15px 30px;
+        font-size: 24px;
+        font-weight: 600;
+        width: 100%;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        font-family: 'Poppins', sans-serif;
+    }
+
+    body::before img {
+        height: 40px;
+        width: auto;
+        content: url('../../public/logo192.png');
+    }
+
+    body::before span {
+        color: #0056FF;
+        content: "BIOMARKER ANALYSIS TOOL";
+        text-align: center;
+        letter-spacing: 0.5px;
+    }
+}
+
+
+  
