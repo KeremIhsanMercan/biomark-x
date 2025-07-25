@@ -685,8 +685,32 @@ app.post('/summarize_statistical_methods', (req, res) => {
 
 // Serve static files from the results directory
 app.use('/results', express.static(path.join(__dirname, 'results')));
+// Serve static files from the sample_report directory
+app.use('/sample_report', express.static(path.join(__dirname, 'sample_report')));
 
+// Direct endpoint to serve the bundled sample analysis PDF for environments
+// where static file mounting may fail due to proxy or path prefix issues.
+app.get('/analysis-report', (req, res) => {
+    const reportPath = path.join(__dirname, 'sample_report', 'Biomarker_Sample_Analysis_Report.pdf');
+    if (fs.existsSync(reportPath)) {
+        return res.sendFile(reportPath);
+    }
+    return res.status(404).send('Sample analysis report not found on server.');
+});
+
+// Disable the default Node.js request timeout so that long-running analyses
+// (e.g. Permutation-Feature-Importance) can finish without the connection
+// being closed prematurely. Setting the timeout values to 0 removes the limit.
 const PORT = 5003;
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
 });
+
+// Remove all built-in time limits so the client can wait as long as needed
+// for heavy analyses to complete.
+server.timeout = 0;          // Disable the 2-minute default timeout
+server.keepAliveTimeout = 0; // Ensure keep-alive connections stay open
+// Node >= 13 introduces headersTimeout; disable it as well for completeness
+if (server.headersTimeout !== undefined) {
+    server.headersTimeout = 0;
+}
