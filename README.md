@@ -10,6 +10,8 @@ BioMark is a user-friendly, web-based platform designed to streamline biomarker 
 
 * **🖥️ Live Tool:** [**https://bioinf.itu.edu.tr/biomark**](https://bioinf.itu.edu.tr/biomark)
 * **🎥 Video Tutorial:** [**Watch the full tutorial on YouTube**](https://www.youtube.com/watch?v=CDm9amayNTM)
+* **📄 Sample Analysis Report:** [**View the Sample Analysis Report (Biomarker_Sample_Analysis_Report.pdf)**](./Biomarker_Sample_Analysis_Report.pdf)
+
 
 ## ✨ Key Features
 
