@@ -1,20 +1,16 @@
 # BioMark: A Web-Based Biomarker Analysis Tool
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 BioMark is a user-friendly, web-based platform designed to streamline biomarker discovery and analysis from high-dimensional omics data. It aims to empower researchers, especially those without extensive computational expertise, to perform complex analyses such as differential analysis, clustering, and classification with just a few clicks.
 
 ---
 
-## 🖥️ Live Tool
+## 🚀 Quick Links
 
-You can access and use BioMark directly in your browser without any installation:
-
-**[https://bioinf.itu.edu.tr/biomark](https://bioinf.itu.edu.tr/biomark)**
-
-## 📄 Research Paper
-
-For a detailed explanation of the methodology, architecture, and case studies, please refer to our research paper included in this repository:
-
-**[View the Paper (Biomark_Biomarker_Analysis_Tool.pdf)](./Biomark_Biomarker_Analysis_Tool.pdf)**
+* **🖥️ Live Tool:** [**https://bioinf.itu.edu.tr/biomark**](https://bioinf.itu.edu.tr/biomark)
+* **🎥 Video Tutorial:** [**Watch the full tutorial on YouTube**](https://www.youtube.com/watch?v=CDm9amayNTM)
+* **📄 Research Paper:** [**View the Paper (Biomark_Biomarker_Analysis_Tool.pdf)**](./Biomark_Biomarker_Analysis_Tool.pdf)
 
 ## ✨ Key Features
 
@@ -33,3 +29,13 @@ This repository contains the source code for the frontend and backend components
     git clone [https://github.com/itu-bioinformatics-database-lab/biomark.git](https://github.com/itu-bioinformatics-database-lab/biomark.git)
     ```
 2.  Follow the setup instructions within the `backend/` and `frontend/` directories to run the application locally.
+
+## ✍️ Citation
+
+If you use BioMark in your research, please cite our work.
+
+*> [Makaleniz yayınlandığında buraya tam bibliyografik künyeyi ekleyebilirsiniz. Şimdilik PDF'e yönlendirmek yeterlidir.]*
+
+## 📝 License
+
+This project is licensed under the MIT License. See the [LICENSE](./LICENSE) file for details.
