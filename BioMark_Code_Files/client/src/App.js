@@ -13,6 +13,7 @@ function App() {
   // These are global variables. Values defined inside functions are not accessible everywhere. These solve that problem.
   // State Variables
   const [file, setFile] = useState(null);
+  const [multiFiles, setMultiFiles] = useState([]); // Çoklu dosya için ek state
   const fileInputRef = useRef(null); // File input reference
   const [error, setError] = useState('');
   const [previousAnalyses, setPreviousAnalyses] = useState([]); // Stores previous analyses
@@ -259,17 +260,25 @@ function App() {
   // Step 1: Updates state after a file is selected
   const handleFileChange = (e) => {
     setDemoMode(false);     // Turn off demo mode when file changes
-    const selectedFile = e.target.files[0];
-    if (selectedFile) {
-        setFile(selectedFile);
-    setError('');
-        // Show Step 2, waiting for upload
-    setShowStepTwo(true);
-        // Clear previous upload info and columns
-        setUploadedInfo(null);
-        setColumns([]);
-        setAllColumns([]);
-        setShowStepThree(false); // Hide Step 3 since not uploaded yet
+    const selectedFiles = Array.from(e.target.files);
+    if (selectedFiles.length === 1) {
+      setFile(selectedFiles[0]);
+      setMultiFiles([]); // Çoklu dosya yoksa temizle
+      setError('');
+      setShowStepTwo(true);
+      setUploadedInfo(null);
+      setColumns([]);
+      setAllColumns([]);
+      setShowStepThree(false);
+    } else if (selectedFiles.length > 1) {
+      setFile(null); // Tekli dosya state'i temizle
+      setMultiFiles(selectedFiles); // Çoklu dosya state'ini doldur
+      setError('');
+      setShowStepTwo(true);
+      setUploadedInfo(null);
+      setColumns([]);
+      setAllColumns([]);
+      setShowStepThree(false);
     }
   };
 
@@ -281,6 +290,90 @@ function App() {
       return;
     }
 
+    // Multi-file upload branch
+    if (multiFiles.length > 1) {
+      setUploading(true);
+      setLoading(true);
+      setError('');
+      setAllColumns([]);
+      const uploadedFilesInfo = [];
+      const uploadDurations = [];
+    
+      for (let i = 0; i < multiFiles.length; i++) {
+        const file = multiFiles[i];
+        const formData = new FormData();
+        formData.append('file', file);
+      
+        const uploadStartTime = Date.now();
+        try {
+          const response = await api.post('/upload', formData); // Tek dosya endpointi
+          if (response.data.success && response.data.filePath) {
+            uploadedFilesInfo.push({
+              name: file.name,
+              size: (file.size / 1024 / 1024).toFixed(2) + ' MB',
+              filePath: response.data.filePath,
+            });
+            const duration = ((Date.now() - uploadStartTime) / 1000).toFixed(2) + ' s';
+            uploadDurations.push(duration);
+            // Ýlk dosya için sütunlarý çek
+            if (i === 0) {
+              setColumns(response.data.columns || []);
+              fetchAllColumnsInBackground(response.data.filePath);
+            }
+          } else {
+            uploadedFilesInfo.push({
+              name: file.name,
+              size: (file.size / 1024 / 1024).toFixed(2) + ' MB',
+              filePath: null,
+            });
+            uploadDurations.push('Failed');
+          }
+        } catch (error) {
+          uploadedFilesInfo.push({
+            name: file.name,
+            size: (file.size / 1024 / 1024).toFixed(2) + ' MB',
+            filePath: null,
+          });
+          uploadDurations.push('Error');
+        }
+      }
+    
+      setUploadedInfo(uploadedFilesInfo);
+      setUploadDuration(uploadDurations);
+      setShowStepThree(true);
+      setUploading(false);
+      setLoading(false);
+      setInfo('');
+
+      // File paths for merging
+      const filePaths = uploadedFilesInfo.map(info => info.filePath).filter(Boolean);
+
+      // If all files uploaded successfully, call merge endpoint
+      if (filePaths.length === multiFiles.length) {
+        try {
+          // TO DO: Yüklenen dosyalarý birleþtirme isteði
+          // Bu istek /upload gibi elde ettiði final dosyayý analize gönderir ve tool step 3 ile devam eder
+          // step 3'te gösterilecek sütunlar da bu joinlenmiþ dosyadan alýnýr (setColumns)
+          const mergeResponse = await api.post('/merge-files', { filePaths });
+          
+          // Örnek devam kodu (burasý deðiþebilir endpoint'e baðlý olarak):
+          // mergeResponse.data.mergedFilePath ile devam edebilirsiniz
+          // setUploadedInfo({
+          //   name: 'merged.csv',
+          //   size: mergeResponse.data.size,
+          //   filePath: mergeResponse.data.mergedFilePath,
+          // });
+          // setColumns(mergeResponse.data.columns || []);
+        } catch (error) {
+          setError('Files merge failed.');
+        }
+      }
+
+      return;
+    }
+
+
+    // Single file upload branch
     if (!file) {
       setError('Please select a file!');
       setLoading(false); // Not even started loading
@@ -1042,7 +1135,11 @@ function App() {
               )}
             </button>
             
-            <span id="file-name">{file ? truncateFileName(file.name) : 'No file chosen'}</span>
+            <span id="file-name">
+              {multiFiles.length > 1
+                ? multiFiles.map(f => truncateFileName(f.name)).join(', ')
+                : file ? truncateFileName(file.name) : 'No file chosen'}
+            </span>
           </div>
           
           <div className="format-instructions-row">
@@ -1062,6 +1159,7 @@ function App() {
             className="file-input-hidden"
             accept=".csv,.tsv,.txt,.xlsx,.gz,.zip"
             onChange={handleFileChange}
+            multiple
           />
         </div>
       </div>
@@ -1082,11 +1180,27 @@ function App() {
         {/* In demo mode, only show uploaded file info */}
         {uploadedInfo && !loading ? (
           <>
-            <div className="uploaded-info">
-              Uploaded file: <b>{truncateFileName(uploadedInfo.name)}</b> ({uploadedInfo.size})
-            </div>
-            {uploadDuration && (
-              <div className="upload-duration">Upload time: {uploadDuration}</div>
+            {/* Çoklu dosya yüklendiyse her dosya için ayrý satýr göster */}
+            {Array.isArray(uploadedInfo) ? (
+              <div className="uploaded-info-list">
+                {uploadedInfo.map((info, idx) => (
+                  <div key={idx} className="uploaded-info">
+                    Uploaded file: <b>{truncateFileName(info.name)}</b>
+                    {info.size ? ` (${info.size})` : ''}
+                    {Array.isArray(uploadDuration) && uploadDuration[idx] && (
+                      <div className="upload-duration">Upload time: {uploadDuration[idx]}</div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="uploaded-info">
+                Uploaded file: <b>{truncateFileName(uploadedInfo.name)}</b>
+                {uploadedInfo.size ? ` (${uploadedInfo.size})` : ''}
+                {uploadDuration && (
+                  <div className="upload-duration">Upload time: {uploadDuration}</div>
+                )}
+              </div>
             )}
           </>
         ) : demoMode ? (

@@ -11,6 +11,10 @@ const { spawn } = require('child_process');
 
 const app = express();
 
+app.get('/', (req, res) => {
+  res.send('Biomarker API server is running.');
+});
+
 app.use(cors({
     origin: 'http://localhost:3000',
     exposedHeaders: ['x-session-id'] // Allow client to read the session header
@@ -241,6 +245,7 @@ app.post('/upload', upload.single('file'), (req, res) => {
         }
     });
 });
+
 
 // step3 - Get all columns
 app.post('/get_all_columns', (req, res) => {
