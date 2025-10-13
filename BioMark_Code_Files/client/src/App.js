@@ -13,7 +13,7 @@ function App() {
   // These are global variables. Values defined inside functions are not accessible everywhere. These solve that problem.
   // State Variables
   const [file, setFile] = useState(null);
-  const [multiFiles, setMultiFiles] = useState([]); // Çoklu dosya için ek state
+  const [multiFiles, setMultiFiles] = useState([]); // ï¿½oklu dosya iï¿½in ek state
   const fileInputRef = useRef(null); // File input reference
   const [error, setError] = useState('');
   const [previousAnalyses, setPreviousAnalyses] = useState([]); // Stores previous analyses
@@ -263,7 +263,7 @@ function App() {
     const selectedFiles = Array.from(e.target.files);
     if (selectedFiles.length === 1) {
       setFile(selectedFiles[0]);
-      setMultiFiles([]); // Çoklu dosya yoksa temizle
+      setMultiFiles([]); // ï¿½oklu dosya yoksa temizle
       setError('');
       setShowStepTwo(true);
       setUploadedInfo(null);
@@ -272,7 +272,7 @@ function App() {
       setShowStepThree(false);
     } else if (selectedFiles.length > 1) {
       setFile(null); // Tekli dosya state'i temizle
-      setMultiFiles(selectedFiles); // Çoklu dosya state'ini doldur
+      setMultiFiles(selectedFiles); // ï¿½oklu dosya state'ini doldur
       setError('');
       setShowStepTwo(true);
       setUploadedInfo(null);
@@ -315,7 +315,7 @@ function App() {
             });
             const duration = ((Date.now() - uploadStartTime) / 1000).toFixed(2) + ' s';
             uploadDurations.push(duration);
-            // Ýlk dosya için sütunlarý çek
+            // ï¿½lk dosya iï¿½in sï¿½tunlarï¿½ ï¿½ek
             if (i === 0) {
               setColumns(response.data.columns || []);
               fetchAllColumnsInBackground(response.data.filePath);
@@ -340,7 +340,6 @@ function App() {
     
       setUploadedInfo(uploadedFilesInfo);
       setUploadDuration(uploadDurations);
-      setShowStepThree(true);
       setUploading(false);
       setLoading(false);
       setInfo('');
@@ -351,24 +350,23 @@ function App() {
       // If all files uploaded successfully, call merge endpoint
       if (filePaths.length === multiFiles.length) {
         try {
-          // TO DO: Yüklenen dosyalarý birleþtirme isteði
-          // Bu istek /upload gibi elde ettiði final dosyayý analize gönderir ve tool step 3 ile devam eder
-          // step 3'te gösterilecek sütunlar da bu joinlenmiþ dosyadan alýnýr (setColumns)
           const mergeResponse = await api.post('/merge-files', { filePaths });
-          
-          // Örnek devam kodu (burasý deðiþebilir endpoint'e baðlý olarak):
-          // mergeResponse.data.mergedFilePath ile devam edebilirsiniz
-          // setUploadedInfo({
-          //   name: 'merged.csv',
-          //   size: mergeResponse.data.size,
-          //   filePath: mergeResponse.data.mergedFilePath,
-          // });
-          // setColumns(mergeResponse.data.columns || []);
+
+          setUploadedInfo({
+            name: 'merged.csv',
+            size: 'N/A', // optional
+            filePath: mergeResponse.data.mergedFilePath,
+          });
+          // Set columns of merged file (not just first file)
+          setColumns(mergeResponse.data.columns || []);
+          // Fetch columns of the merged file for later steps
+          fetchAllColumnsInBackground(mergeResponse.data.mergedFilePath);
+
+          setShowStepThree(true);
         } catch (error) {
           setError('Files merge failed.');
         }
       }
-
       return;
     }
 
@@ -1180,7 +1178,7 @@ function App() {
         {/* In demo mode, only show uploaded file info */}
         {uploadedInfo && !loading ? (
           <>
-            {/* Çoklu dosya yüklendiyse her dosya için ayrý satýr göster */}
+            {/* ï¿½oklu dosya yï¿½klendiyse her dosya iï¿½in ayrï¿½ satï¿½r gï¿½ster */}
             {Array.isArray(uploadedInfo) ? (
               <div className="uploaded-info-list">
                 {uploadedInfo.map((info, idx) => (
