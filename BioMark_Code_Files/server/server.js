@@ -271,6 +271,7 @@ app.post('/merge-files', async (req, res) => {
                 return res.json({
                     success: true,
                     mergedFilePath: parsed.mergedFilePath,
+                    size: parsed.size,
                     columns: parsed.columns
                 });
             } catch (err) {

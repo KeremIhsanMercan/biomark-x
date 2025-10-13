@@ -23,17 +23,35 @@ def merge_files(file_paths, key_column='Sample ID'):
     merged_df = dfs[0]
     for df in dfs[1:]:
         merged_df = pd.merge(merged_df, df, on=key_column, how='outer')
-
-    # 🔹 Clean up column types
-    # Convert all non-key columns that look numeric into float
-    for col in merged_df.columns:
-        if col != key_column:
-            merged_df[col] = pd.to_numeric(merged_df[col], errors='coerce')
     
-    # 🔹 Replace any infinities or weird symbols with NaN
     merged_df.replace([float('inf'), float('-inf')], pd.NA, inplace=True)
 
-    # 🔹 Optional: Fill NaNs (to prevent later ML crashes)
+    # After merging, handle columns with same base name
+    base_cols = set()
+    for col in merged_df.columns:
+        if '_file' in col:
+            base_cols.add(col.split('_file')[0])
+    for base in base_cols:
+        related = [c for c in merged_df.columns if c == base or c.startswith(f"{base}_file")]
+        if len(related) > 1:
+            # New column with first non-null value
+            merged_df[base] = merged_df[related].bfill(axis=1).iloc[:, 0]
+            # Delete older columns
+            for c in related:
+                if c != base:
+                    merged_df.drop(columns=c, inplace=True)
+    
+
+    # Clean up column types
+    # Convert all non-key columns that look numeric into float
+    for col in merged_df.columns:
+        if col != key_column and merged_df[col].dtype != object:
+            merged_df[col] = pd.to_numeric(merged_df[col], errors='coerce')
+    
+    # Replace any infinities or weird symbols with NaN
+    merged_df.replace([float('inf'), float('-inf')], pd.NA, inplace=True)
+
+    # Optional: Fill NaNs (to prevent later ML crashes)
     merged_df.fillna(0, inplace=True)
 
     # Save merged CSV
