@@ -399,10 +399,14 @@ app.post('/analyze', (req, res) => {
         nFolds
     } = req.body;
 
-    
-    // Ownership check
-    if (!filePath.startsWith('results/merged_files/')) {
-        // Derive uploadId from prefixed filename (UUID_originalName.ext)
+    // Normalize file path for cross-platform consistency
+    const normalizedFilePath = path.normalize(filePath);
+
+    // Check if it's a merged file (system-generated)
+    const isMergedFile = normalizedFilePath.includes(path.join('results', 'merged_files'));
+
+    // Ownership check — only apply to user uploads
+    if (!isMergedFile) {
         const derivedUploadId = path.basename(filePath).split('_')[0];
         const uploadOwner = db.prepare('SELECT session_id FROM uploads WHERE id = ?').get(derivedUploadId);
 
@@ -412,11 +416,10 @@ app.post('/analyze', (req, res) => {
     }
 
     const analysisId = uuidv4();
-
     let derivedUploadIdForInsert = null;
 
-    if (!filePath.startsWith('results/merged_files/')) {
-        derivedUploadIdForInsert = derivedUploadId;
+    if (!isMergedFile) {
+        derivedUploadIdForInsert = path.basename(filePath).split('_')[0];
     }
 
     // Record analysis start
