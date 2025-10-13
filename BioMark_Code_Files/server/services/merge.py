@@ -7,9 +7,9 @@ def merge_files(file_paths, key_column='Sample ID'):
         if not os.path.exists(path):
             raise FileNotFoundError(f"File not found: {path}")
         
-        df = pd.read_csv(path)
+        df = pd.read_csv(path, low_memory=False)
         
-        # If key_column not found, create one with row index
+        # Ensure key column exists
         if key_column not in df.columns:
             df.insert(0, key_column, range(1, len(df) + 1))
         
@@ -19,42 +19,51 @@ def merge_files(file_paths, key_column='Sample ID'):
         
         dfs.append(df)
     
-    # Merge iteratively using outer join on key
+    # Merge all files using outer join on the key
     merged_df = dfs[0]
     for df in dfs[1:]:
         merged_df = pd.merge(merged_df, df, on=key_column, how='outer')
     
-    merged_df.replace([float('inf'), float('-inf')], pd.NA, inplace=True)
-
-    # After merging, handle columns with same base name
+    # Combine columns with same base name (e.g., "Age", "Age_file2", ...)
     base_cols = set()
     for col in merged_df.columns:
         if '_file' in col:
             base_cols.add(col.split('_file')[0])
+    
     for base in base_cols:
         related = [c for c in merged_df.columns if c == base or c.startswith(f"{base}_file")]
         if len(related) > 1:
-            # New column with first non-null value
             merged_df[base] = merged_df[related].bfill(axis=1).iloc[:, 0]
-            # Delete older columns
             for c in related:
                 if c != base:
                     merged_df.drop(columns=c, inplace=True)
-    
 
-    # Clean up column types
-    # Convert all non-key columns that look numeric into float
+    # Separate numeric and categorical columns
+    numeric_cols = merged_df.select_dtypes(include=['int64', 'float64']).columns.tolist()
+    object_cols = merged_df.select_dtypes(include=['object']).columns.tolist()
+
+    # Convert numeric-like strings to numbers safely
     for col in merged_df.columns:
-        if col != key_column and merged_df[col].dtype != object:
-            merged_df[col] = pd.to_numeric(merged_df[col], errors='coerce')
-    
-    # Replace any infinities or weird symbols with NaN
+        if col != key_column:
+            merged_df[col] = pd.to_numeric(merged_df[col], errors='ignore')
+
+    # Re-detect numeric and categorical columns after conversion
+    numeric_cols = merged_df.select_dtypes(include=['int64', 'float64']).columns.tolist()
+    categorical_cols = [c for c in merged_df.columns if c not in numeric_cols + [key_column]]
+
+    # Fill numeric NaNs with median values
+    for col in numeric_cols:
+        if merged_df[col].isna().any():
+            merged_df[col].fillna(merged_df[col].median(), inplace=True)
+
+    # Fill categorical NaNs with "Unknown" (optional)
+    for col in categorical_cols:
+        merged_df[col].fillna("Unknown", inplace=True)
+
+    # Replace infinite values
     merged_df.replace([float('inf'), float('-inf')], pd.NA, inplace=True)
 
-    # Optional: Fill NaNs (to prevent later ML crashes)
-    merged_df.fillna(0, inplace=True)
-
-    # Save merged CSV
+    # Save merged file
     out_dir = os.path.join('results', 'merged_files')
     os.makedirs(out_dir, exist_ok=True)
     merged_file_path = os.path.join(out_dir, 'merged.csv')
