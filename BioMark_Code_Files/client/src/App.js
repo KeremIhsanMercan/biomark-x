@@ -13,7 +13,8 @@ function App() {
   // These are global variables. Values defined inside functions are not accessible everywhere. These solve that problem.
   // State Variables
   const [file, setFile] = useState(null);
-  const [multiFiles, setMultiFiles] = useState([]); // Çoklu dosya için ek state
+  const [multiFiles, setMultiFiles] = useState([]);
+  const [mergeDuration, setMergeDuration] = useState(null);
   const fileInputRef = useRef(null); // File input reference
   const [error, setError] = useState('');
   const [previousAnalyses, setPreviousAnalyses] = useState([]); // Stores previous analyses
@@ -263,7 +264,7 @@ function App() {
     const selectedFiles = Array.from(e.target.files);
     if (selectedFiles.length === 1) {
       setFile(selectedFiles[0]);
-      setMultiFiles([]); // Çoklu dosya yoksa temizle
+      setMultiFiles([]);
       setError('');
       setShowStepTwo(true);
       setUploadedInfo(null);
@@ -272,7 +273,7 @@ function App() {
       setShowStepThree(false);
     } else if (selectedFiles.length > 1) {
       setFile(null); // Tekli dosya state'i temizle
-      setMultiFiles(selectedFiles); // Çoklu dosya state'ini doldur
+      setMultiFiles(selectedFiles);
       setError('');
       setShowStepTwo(true);
       setUploadedInfo(null);
@@ -315,7 +316,6 @@ function App() {
             });
             const duration = ((Date.now() - uploadStartTime) / 1000).toFixed(2) + ' s';
             uploadDurations.push(duration);
-            // Ýlk dosya için sütunlarý çek
             if (i === 0) {
               setColumns(response.data.columns || []);
               fetchAllColumnsInBackground(response.data.filePath);
@@ -340,10 +340,11 @@ function App() {
     
       setUploadedInfo(uploadedFilesInfo);
       setUploadDuration(uploadDurations);
-      setShowStepThree(true);
       setUploading(false);
       setLoading(false);
-      setInfo('');
+      
+      setInfo('Merging files...');
+      const mergeStartTime = Date.now();
 
       // File paths for merging
       const filePaths = uploadedFilesInfo.map(info => info.filePath).filter(Boolean);
@@ -351,29 +352,38 @@ function App() {
       // If all files uploaded successfully, call merge endpoint
       if (filePaths.length === multiFiles.length) {
         try {
-          // TO DO: Yüklenen dosyalarý birleþtirme isteði
-          // Bu istek /upload gibi elde ettiði final dosyayý analize gönderir ve tool step 3 ile devam eder
-          // step 3'te gösterilecek sütunlar da bu joinlenmiþ dosyadan alýnýr (setColumns)
           const mergeResponse = await api.post('/merge-files', { filePaths });
           
-          // Örnek devam kodu (burasý deðiþebilir endpoint'e baðlý olarak):
-          // mergeResponse.data.mergedFilePath ile devam edebilirsiniz
-          // setUploadedInfo({
-          //   name: 'merged.csv',
-          //   size: mergeResponse.data.size,
-          //   filePath: mergeResponse.data.mergedFilePath,
-          // });
-          // setColumns(mergeResponse.data.columns || []);
+          const mergeEndTime = Date.now();
+          const mergeTime = ((mergeEndTime - mergeStartTime) / 1000).toFixed(2) + ' s';
+          setMergeDuration(mergeTime);
+
+          if (mergeResponse.data.success && mergeResponse.data.mergedFilePath) {
+            setInfo('Files merged successfully.');
+
+            setUploadedInfo({
+              name: 'merged.csv',
+              size: mergeResponse.data.size ? `${(mergeResponse.data.size / (1024 * 1024)).toFixed(2)} MB` : '',
+              filePath: mergeResponse.data.mergedFilePath,
+            });
+            setColumns(mergeResponse.data.columns || []);
+            setShowStepThree(true);
+            fetchAllColumnsInBackground(mergeResponse.data.mergedFilePath);
+          } else {
+            setError('Files merged failed.');
+            setInfo('');
+          }
         } catch (error) {
           setError('Files merge failed.');
         }
       }
-
       return;
     }
 
 
     // Single file upload branch
+    setMergeDuration(null);
+
     if (!file) {
       setError('Please select a file!');
       setLoading(false); // Not even started loading
@@ -1176,11 +1186,19 @@ function App() {
           <div className="step-number">2</div>
           <h2 className="title">Upload your file</h2>
         </div>
+
+        {info && (
+          <div className="loading-message">
+            {info}
+            
+            {loading && <div className="spinner"></div>}
+          </div>
+        )}
         
         {/* In demo mode, only show uploaded file info */}
         {uploadedInfo && !loading ? (
           <>
-            {/* Çoklu dosya yüklendiyse her dosya için ayrý satýr göster */}
+            
             {Array.isArray(uploadedInfo) ? (
               <div className="uploaded-info-list">
                 {uploadedInfo.map((info, idx) => (
@@ -1198,7 +1216,10 @@ function App() {
                 Uploaded file: <b>{truncateFileName(uploadedInfo.name)}</b>
                 {uploadedInfo.size ? ` (${uploadedInfo.size})` : ''}
                 {uploadDuration && (
-                  <div className="upload-duration">Upload time: {uploadDuration}</div>
+                  <div className="upload-duration">
+                    {!mergeDuration && `Upload time: ${uploadDuration}`}
+                    {mergeDuration && `Merge time: ${mergeDuration}`}
+                  </div>
                 )}
               </div>
             )}
@@ -1295,7 +1316,8 @@ function App() {
 
                 </div>
                   {error && <div className="error-message step-error">{error}</div>}
-                  {info && <div className="info-message step-info">{info}</div>}
+                  
+                  {/* {info && <div className="info-message step-info">{info}</div>} */}
               </div>
               )}
               {/* Step 4: Get classes names */}
