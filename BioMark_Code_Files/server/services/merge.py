@@ -1,85 +1,111 @@
-import sys, os, pandas as pd, json
+import sys
+import os
+import pandas as pd
+import json
+import uuid
+from datetime import datetime
 
-def merge_files(file_paths, key_column='Sample ID'):
+def merge_files(chosen_columns):
     dfs = []
-    
-    for i, path in enumerate(file_paths):
+    column_metadata = {}
+
+    for i, info in enumerate(chosen_columns):
+        path = info['filePath']
+        illness_col = info['illnessColumn']
+        sample_col = info['sampleColumn']
+
         if not os.path.exists(path):
             raise FileNotFoundError(f"File not found: {path}")
-        
+
         df = pd.read_csv(path, low_memory=False)
-        
-        # Ensure key column exists
-        if key_column not in df.columns:
-            df.insert(0, key_column, range(1, len(df) + 1))
-        
-        # Rename overlapping columns (except key)
-        if i > 0:
-            df = df.rename(columns={col: f"{col}_file{i+1}" for col in df.columns if col != key_column})
-        
-        dfs.append(df)
-    
-    # Merge all files using outer join on the key
-    merged_df = dfs[0]
-    for df in dfs[1:]:
-        merged_df = pd.merge(merged_df, df, on=key_column, how='outer')
-    
-    # Combine columns with same base name (e.g., "Age", "Age_file2", ...)
-    base_cols = set()
-    for col in merged_df.columns:
-        if '_file' in col:
-            base_cols.add(col.split('_file')[0])
-    
-    for base in base_cols:
-        related = [c for c in merged_df.columns if c == base or c.startswith(f"{base}_file")]
-        if len(related) > 1:
-            merged_df[base] = merged_df[related].bfill(axis=1).iloc[:, 0]
-            for c in related:
-                if c != base:
-                    merged_df.drop(columns=c, inplace=True)
 
-    # Separate numeric and categorical columns
-    numeric_cols = merged_df.select_dtypes(include=['int64', 'float64']).columns.tolist()
-    object_cols = merged_df.select_dtypes(include=['object']).columns.tolist()
+        # Ensure sample column exists
+        if sample_col not in df.columns:
+            raise ValueError(f"Sample column '{sample_col}' not found in {path}")
 
-    # Convert numeric-like strings to numbers safely
-    for col in merged_df.columns:
-        if col != key_column:
-            merged_df[col] = pd.to_numeric(merged_df[col], errors='ignore')
+        # Rename columns (except sample) if duplicated
+        for col in df.columns:
+            if col != sample_col:
+                if col in column_metadata:
+                    new_col = f"{col}_file{i+1}"
+                    df.rename(columns={col: new_col}, inplace=True)
+                    column_metadata[new_col] = path
+                else:
+                    column_metadata[col] = path
 
-    # Re-detect numeric and categorical columns after conversion
-    numeric_cols = merged_df.select_dtypes(include=['int64', 'float64']).columns.tolist()
-    categorical_cols = [c for c in merged_df.columns if c not in numeric_cols + [key_column]]
+        dfs.append((df, sample_col))
 
-    # Fill numeric NaNs with median values
-    for col in numeric_cols:
-        if merged_df[col].isna().any():
-            merged_df[col].fillna(merged_df[col].median(), inplace=True)
+    # Merge all dataframes using their sample column
+    merged_df = dfs[0][0].copy()
+    key_col = dfs[0][1]
 
-    # Fill categorical NaNs with "Unknown" (optional)
-    for col in categorical_cols:
-        merged_df[col].fillna("Unknown", inplace=True)
+    for df, sample_col in dfs[1:]:
+        merged_df = pd.merge(
+            merged_df,
+            df,
+            left_on=key_col,
+            right_on=sample_col,
+            how='inner',
+            suffixes=('', '_dup')
+        )
 
-    # Replace infinite values
-    merged_df.replace([float('inf'), float('-inf')], pd.NA, inplace=True)
+        # Drop duplicated sample columns
+        if sample_col != key_col:
+            merged_df.drop(columns=[sample_col], inplace=True)
+
+    # Convert numeric columns to float
+    for col in merged_df.select_dtypes(include=['int64', 'float64']).columns:
+        merged_df[col] = merged_df[col].astype(float)
 
     # Save merged file
     out_dir = os.path.join('results', 'merged_files')
     os.makedirs(out_dir, exist_ok=True)
-    merged_file_path = os.path.join(out_dir, 'merged.csv')
+    unique_id = uuid.uuid4().hex[:8]
+    merged_file_path = os.path.join(out_dir, f"merged_{unique_id}.csv")
     merged_df.to_csv(merged_file_path, index=False)
-    
+
+    # Save enhanced metadata
+    metadata = {
+        "merged_id": unique_id,
+        "timestamp": datetime.now().isoformat(),
+        "merge_type": "inner",
+        "input_files": {},
+        "merged_file": merged_file_path,
+        "merged_columns": merged_df.columns.tolist(),
+        "size_bytes": os.path.getsize(merged_file_path)
+    }
+
+    for i, info in enumerate(chosen_columns):
+        path = info['filePath']
+        illness_col = info['illnessColumn']
+        sample_col = info['sampleColumn']
+        df_cols = pd.read_csv(path, nrows=0).columns.tolist()
+        # Extract clean original filename (handles prefixed UUIDs)
+        basename = os.path.basename(path)
+        clean_name = basename.split("_", 1)[1] if "_" in basename else basename
+
+        metadata["input_files"][clean_name] = {
+            "illness_column": illness_col,
+            "sample_column": sample_col,
+            "columns": df_cols
+        }
+
+    metadata_path = merged_file_path.replace(".csv", "_metadata.json")
+    with open(metadata_path, "w") as f:
+        json.dump(metadata, f, indent=2)
+
     return {
         'mergedFilePath': merged_file_path,
+        'metadataPath': metadata_path,
         'columns': merged_df.columns.tolist()
     }
 
 if __name__ == "__main__":
-    file_paths = sys.argv[1:]
-    key_column = 'Sample ID'  # default
+    chosen_columns = json.loads(sys.argv[1])
     try:
-        result = merge_files(file_paths, key_column)
-        print(json.dumps(result))
+        result = merge_files(chosen_columns)
+        print(json.dumps(result, indent=2))
     except Exception as e:
         sys.stderr.write(str(e))
         sys.exit(1)
+
