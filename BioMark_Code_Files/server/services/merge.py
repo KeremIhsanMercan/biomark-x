@@ -23,15 +23,18 @@ def merge_files(chosen_columns):
         if sample_col not in df.columns:
             raise ValueError(f"Sample column '{sample_col}' not found in {path}")
 
-        # Rename columns (except sample) if duplicated
-        for col in df.columns:
-            if col != sample_col:
-                if col in column_metadata:
-                    new_col = f"{col}_file{i+1}"
-                    df.rename(columns={col: new_col}, inplace=True)
-                    column_metadata[new_col] = path
-                else:
-                    column_metadata[col] = path
+        # Track column origins & drop duplicates except sample column
+        for col in list(df.columns):
+            if col == sample_col:
+                continue
+            
+            if col in column_metadata:
+                # Already seen → drop duplicate column
+                df.drop(columns=[col], inplace=True)
+            else:
+                # First occurrence → track it
+                column_metadata[col] = path
+
 
         dfs.append((df, sample_col))
 
