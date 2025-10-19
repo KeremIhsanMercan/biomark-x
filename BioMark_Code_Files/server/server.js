@@ -248,17 +248,25 @@ app.post('/upload', upload.single('file'), (req, res) => {
 
 // step2 - Merge files endpoint
 app.post('/merge-files', async (req, res) => {
-    const { filePaths, keyColumn = 'Sample ID' } = req.body;
+    const { chosenColumns } = req.body;
 
-    if (!filePaths || !Array.isArray(filePaths) || filePaths.length < 2) {
+    if (!chosenColumns || !Array.isArray(chosenColumns) || chosenColumns.length < 2) {
         return res.status(400).json({ success: false, error: 'Provide at least two files.' });
     }
 
     const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
     const scriptPath = path.join(__dirname, 'services', 'merge.py');
 
-    const python = spawn(pythonCommand, ['-Xfrozen_modules=off', scriptPath, ...filePaths]);
+    // Send chosenColumns as a single JSON argument
+    const pythonArgs = [
+        '-Xfrozen_modules=off',
+        scriptPath,
+        JSON.stringify(chosenColumns)
+    ];
 
+    console.log("Running Python command:", pythonCommand, pythonArgs.join(" "));
+
+    const python = spawn(pythonCommand, pythonArgs);
     let stdout = '', stderr = '';
 
     python.stdout.on('data', data => stdout += data.toString());
@@ -271,7 +279,7 @@ app.post('/merge-files', async (req, res) => {
                 return res.json({
                     success: true,
                     mergedFilePath: parsed.mergedFilePath,
-                    size: parsed.size,
+                    metadataPath: parsed.metadataPath,
                     columns: parsed.columns
                 });
             } catch (err) {
@@ -284,6 +292,7 @@ app.post('/merge-files', async (req, res) => {
         }
     });
 });
+
 
 
 // step3 - Get all columns
