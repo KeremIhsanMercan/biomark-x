@@ -52,6 +52,7 @@ function App() {
   const [summarizeAnalyses, setSummarizeAnalyses] = useState([]); // Stores multiple summarize analyses
   const [info, setInfo] = useState('');
   const [processing, setProcessing] = useState(false); // Summarize process state
+  const [isMerging, setIsMerging] = useState(false);
   const [selectedAnalyzes, setSelectedAnalyzes] = useState({
     differential: [],
     clustering: [],
@@ -97,15 +98,15 @@ function App() {
   const [uploadDuration, setUploadDuration] = useState(null);
   const [loadingClasses, setLoadingClasses] = useState(false); // loading while fetching class list
 
-   // Memoize the first 10 columns - prevents recalculation on every render
-   const firstTenColumns = useMemo(() => {
-    // If allColumns is filled and columns is empty, use the first 10 of allColumns
-    if (allColumns.length > 0 && columns.length === 0) {
-        return allColumns.slice(0, allColumns.length);
-    }
-    // Otherwise, use the first 10 of the current columns state
-    return columns.slice(0, allColumns.length);
-   }, [columns, allColumns]); // Add allColumns as a dependency
+  // Memoize the first 10 columns - prevents recalculation on every render
+  const firstTenColumns = useMemo(() => {
+   // If allColumns is filled and columns is empty, use the first 10 of allColumns
+   if (allColumns.length > 0 && columns.length === 0) {
+       return allColumns.slice(0, allColumns.length);
+   }
+   // Otherwise, use the first 10 of the current columns state
+   return columns.slice(0, allColumns.length);
+  }, [columns, allColumns]); // Add allColumns as a dependency
   
   // Helper Function: General function to fetch all columns (will use this function)
   const fetchAllColumnsGeneric = async (filePath) => { // filePath should be passed as a parameter
@@ -579,6 +580,7 @@ function App() {
     setError('');
     setInfo('Merging files...');
     setLoading(true);
+    setIsMerging(true);
     const mergeStart = Date.now();
     console.log("Merging files with chosen columns:", chosenColumns);
     try {
@@ -649,6 +651,7 @@ function App() {
       setError('Merge request failed.');
     } finally {
       setLoading(false);
+      setIsMerging(false);
     }
   };
 
@@ -811,6 +814,13 @@ function App() {
     if (Array.isArray(newlySelectedClasses) && newlySelectedClasses.length === 2) {
         setselectedClasses(newlySelectedClasses);
         console.log("Selected classes: ", newlySelectedClasses);
+
+        // IMPORTANT: set the global illness column to the merged/step4-selected column
+        // so subsequent analysis uses the column that produced these classes.
+        if (selectedMergedIllnessColumn) {
+          setSelectedIllnessColumn(selectedMergedIllnessColumn);
+        }
+
         setShowStepFive(true); // Show Step 5 when classes are selected
 
         // Scroll to Step 5
@@ -920,6 +930,7 @@ function App() {
     } else {
         // Optionally reset to default parameters
     }
+    
 
     setShowStepSix(true); // Show Step 6 after analysis selection
     // Scroll is handled in useEffect
@@ -939,27 +950,12 @@ function App() {
     if (selectedIllnessColumn) protectedCols.add(selectedIllnessColumn);
     if (selectedSampleColumn) protectedCols.add(selectedSampleColumn);
 
-    if (Array.isArray(chosenColumns)) {
-      chosenColumns.forEach((c) => {
-        if (c?.illnessColumn) protectedCols.add(c.illnessColumn);
-        if (c?.sampleColumn) protectedCols.add(c.sampleColumn);
-      });
-    }
-
     // If the column is protected, show a descriptive message including source(s)
     if (protectedCols.has(columnToAdd)) {
       const sources = [];
 
       if (selectedIllnessColumn === columnToAdd) sources.push('current Patient Group');
       if (selectedSampleColumn === columnToAdd) sources.push('current Sample ID');
-
-      if (Array.isArray(chosenColumns) && Array.isArray(multiUploadedInfo)) {
-        chosenColumns.forEach((c, idx) => {
-          const shortName = multiUploadedInfo[idx]?.name || `file ${idx + 1}`;
-          if (c?.illnessColumn === columnToAdd) sources.push(`Patient Group from ${truncateFileName(shortName, 30)}`);
-          if (c?.sampleColumn === columnToAdd) sources.push(`Sample ID from ${truncateFileName(shortName, 30)}`);
-        });
-      }
 
       setInfo(`Column "${columnToAdd}" is already selected as Patient Group or Sample ID. It cannot be excluded.`);
       setTimeout(() => setInfo(''), 3000);
@@ -1455,7 +1451,7 @@ function App() {
 
         
         {/* In demo mode, only show uploaded file info */}
-        {step2UploadedSnapshot && !loading ? (
+        {step2UploadedSnapshot && (!loading || isMerging) ? (
           <>
             {Array.isArray(step2UploadedSnapshot) ? (
               <div className="uploaded-info-list">
