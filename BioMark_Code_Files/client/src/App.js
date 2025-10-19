@@ -98,13 +98,11 @@ function App() {
   const [uploadDuration, setUploadDuration] = useState(null);
   const [loadingClasses, setLoadingClasses] = useState(false); // loading while fetching class list
 
-  // Memoize the first 10 columns - prevents recalculation on every render
+  // Memoize columns - prevents recalculation on every render
   const firstTenColumns = useMemo(() => {
-   // If allColumns is filled and columns is empty, use the first 10 of allColumns
    if (allColumns.length > 0 && columns.length === 0) {
        return allColumns.slice(0, allColumns.length);
    }
-   // Otherwise, use the first 10 of the current columns state
    return columns.slice(0, allColumns.length);
   }, [columns, allColumns]); // Add allColumns as a dependency
   
@@ -837,18 +835,30 @@ function App() {
 
   const handleMergedIllnessColumnSelect = async (col) => {
     setError('');
+
+    // if same column clicked, do nothing
+    if (col === selectedMergedIllnessColumn) return;
+
+    // Immediately clear previous classes and UI to avoid mismatch
+    setselectedClasses([]);
+    setClassTable({ class: [] });
+
+    // set the merged-column selection for UI
     setSelectedMergedIllnessColumn(col);
-    // uploadedInfo.filePath burada merged dosyanýn path'i olmalý
+
+    // merged file must exist
     if (!uploadedInfo?.filePath) {
       setError('Merged file not available for fetching classes.');
       return;
     }
+
     try {
       setLoadingClasses(true);
       const clsResp = await api.post('/get_classes', {
         filePath: uploadedInfo.filePath,
         columnName: col
       });
+
       if (clsResp.data.success && clsResp.data.classList_) {
         let classes = [];
         let diagramUrl = '';
@@ -863,8 +873,10 @@ function App() {
           console.error("Failed to parse class list:", parseError);
           classes = [];
         }
+
+        // populate new class table and ensure no leftover selections remain
         setClassTable({ class: classes, classDiagramUrl: diagramUrl });
-        setselectedClasses([]); // reset selections for step 4
+        setselectedClasses([]);
       } else {
         setError('Failed to retrieve classes for the selected merged column.');
         setClassTable({ class: [] });
