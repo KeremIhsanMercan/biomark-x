@@ -817,6 +817,8 @@ function App() {
         // so subsequent analysis uses the column that produced these classes.
         if (selectedMergedIllnessColumn) {
           setSelectedIllnessColumn(selectedMergedIllnessColumn);
+          // Ensure the column used for these classes is NOT in excluded list
+          setNonFeatureColumns(prev => Array.isArray(prev) ? prev.filter(c => c !== selectedMergedIllnessColumn) : []);
         }
 
         setShowStepFive(true); // Show Step 5 when classes are selected
@@ -846,6 +848,9 @@ function App() {
     // set the merged-column selection for UI
     setSelectedMergedIllnessColumn(col);
 
+    // Remove this column from excluded list if present (so it's not accidentally excluded)
+    setNonFeatureColumns(prev => Array.isArray(prev) ? prev.filter(c => c !== col) : []);
+    
     // merged file must exist
     if (!uploadedInfo?.filePath) {
       setError('Merged file not available for fetching classes.');
@@ -1123,13 +1128,15 @@ function App() {
     setUseDefaultParams(true);
     // Optionally reset parameters as well.
 
+    // IMPORTANT: clear excluded columns so previous excludes do not affect the new analysis
+    setNonFeatureColumns([]); // <-- automatic removal of previous excluded columns
+
     // If previous selectedIllnessColumn exists, reload classTable
     if (selectedIllnessColumn) {
       // Directly calling handleIllnessColumnSelection may not have the expected effect due to timing of state updates.
       // But this should trigger the API call.
       handleIllnessColumnSelection(selectedIllnessColumn);
     }
-
     setTimeout(() => {
       const targetRef = stepFourRef.current || stepThreeRef.current;
       if (targetRef) {
