@@ -49,6 +49,7 @@ function App() {
   const [availableClassPairs, setAvailableClassPairs] = useState([]);
   const [allColumns, setAllColumns] = useState([]); // Stores all columns
   const [loadingAllColumns, setLoadingAllColumns] = useState(false); // Loading state for all columns
+  const columnsCacheRef = useRef({}); // <-- cache: { [filePath]: columnsArray }
   const [summarizeAnalyses, setSummarizeAnalyses] = useState([]); // Stores multiple summarize analyses
   const [info, setInfo] = useState('');
   const [processing, setProcessing] = useState(false); // Summarize process state
@@ -105,6 +106,15 @@ function App() {
    }
    return columns.slice(0, allColumns.length);
   }, [columns, allColumns]); // Add allColumns as a dependency
+
+  const mergedIllnessUnique = useMemo(() => {
+    if (!Array.isArray(chosenColumns)) return [];
+    const s = new Set();
+    chosenColumns.forEach(c => {
+      if (c && c.illnessColumn) s.add(c.illnessColumn);
+    });
+    return Array.from(s);
+  }, [chosenColumns]);
   
   // Helper Function: General function to fetch all columns (will use this function)
   const fetchAllColumnsGeneric = async (filePath) => { // filePath should be passed as a parameter
@@ -112,11 +122,19 @@ function App() {
       console.error("File path is not available for fetching all columns.");
       return [];
     }
+
+    const cached = columnsCacheRef.current[filePath];
+    if (cached && Array.isArray(cached) && cached.length > 0) {
+      // console.log("Using cached columns for", filePath);
+      return cached;
+    }
+
     try {
       const response = await api.post('/get_all_columns', {
         filePath: filePath // Use the filePath passed as a parameter
       });
       if (response.data.success) {
+        columnsCacheRef.current[filePath] = response.data.columns || [];
         return response.data.columns;
       } else {
         console.error('Error fetching all columns:', response.data.message);
@@ -321,6 +339,7 @@ function App() {
             });
             const duration = ((Date.now() - uploadStartTime) / 1000).toFixed(2) + ' s';
             uploadDurations.push(duration);
+            columnsCacheRef.current[response.data.filePath] = response.data.columns || [];
             if (i === 0) {
               setColumns(response.data.columns || []);
               fetchAllColumnsInBackground(response.data.filePath);
@@ -458,6 +477,7 @@ function App() {
 
       if (response.data.success && response.data.filePath) {
         const uploadedFilePath = response.data.filePath;
+        columnsCacheRef.current[uploadedFilePath] = response.data.columns || [];
         // Save the first columns to state
         setColumns(response.data.columns || []);
         setUploadedInfo({
@@ -513,7 +533,26 @@ function App() {
 
     // Disable column selectors and clear old columns while loading new ones
     setLoadingAllColumns(true);
-    setColumns([]); // clear old columns
+    setColumns([]); // clear old columns while we decide
+
+    // If cached, use cached columns immediately and skip API call
+    const cached = columnsCacheRef.current[info.filePath];
+    if (cached && Array.isArray(cached) && cached.length > 0) {
+      setColumns(cached);
+      // restore per-file selections for this file if present
+      const perFile = Array.isArray(chosenColumns) && chosenColumns[index] ? chosenColumns[index] : null;
+      if (perFile) {
+        setSelectedIllnessColumn(perFile.illnessColumn || '');
+        setSelectedSampleColumn(perFile.sampleColumn || '');
+      } else {
+        setSelectedIllnessColumn('');
+        setSelectedSampleColumn('');
+      }
+      setLoadingAllColumns(false);
+      return;
+    }
+
+
 
     try {
       const cols = await fetchAllColumnsGeneric(info.filePath);
@@ -591,8 +630,12 @@ function App() {
           size: res.data.size ? `${(res.data.size / (1024*1024)).toFixed(2)} MB` : '',
           filePath: res.data.mergedFilePath
         });
+        
         setColumns(res.data.columns || []);
         setAllColumns(res.data.columns || []);
+        // Cache merged file columns to avoid extra get_all_columns calls later
+        columnsCacheRef.current[res.data.mergedFilePath] = res.data.columns || [];
+        
         fetchAllColumnsInBackground(res.data.mergedFilePath);
 
         const fallback = chosenColumns && chosenColumns.length ? chosenColumns[0] : null;
@@ -1652,13 +1695,13 @@ function App() {
                   <div style={{ width: '320px', marginLeft: '20px' }}>
                     <div style={{ fontWeight: 600, marginBottom: '8px' }}>Patient Group columns (from Step 3)</div>
                     <SearchableColumnList
-                      initialColumns={(Array.isArray(chosenColumns) ? chosenColumns.map(c => c.illnessColumn).filter(Boolean) : [])}
-                      allColumns={Array.isArray(chosenColumns) ? chosenColumns.map(c => c.illnessColumn).filter(Boolean) : []}
+                      initialColumns={mergedIllnessUnique}
+                      allColumns={mergedIllnessUnique}
                       onSelect={(col) => handleMergedIllnessColumnSelect(col)}
                       selectedColumns={selectedMergedIllnessColumn ? [selectedMergedIllnessColumn] : []}
                       placeholder="Choose merged Patient Group column..."
                       listHeight="200px"
-                      isLoading={false}
+                      isLoading={loadingClasses}
                       disabled={loadingClasses || !uploadedInfo?.filePath}
                     />
                     {loadingClasses && <div style={{ marginTop: 8 }}><div className="spinner"></div> Loading classes...</div>}
