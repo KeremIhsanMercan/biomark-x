@@ -54,6 +54,7 @@ function App() {
   const [info, setInfo] = useState('');
   const [processing, setProcessing] = useState(false); // Summarize process state
   const [isMerging, setIsMerging] = useState(false);
+  const [mergeDone, setMergeDone] = useState(false);
   const [selectedAnalyzes, setSelectedAnalyzes] = useState({
     differential: [],
     clustering: [],
@@ -370,7 +371,8 @@ function App() {
       setChosenColumns(uploadedFilesInfo.map(info => ({
         filePath: info.filePath,
         illnessColumn: '',
-        sampleColumn: ''
+        sampleColumn: '',
+        includeInMerge: true
       })));
       
       
@@ -383,40 +385,6 @@ function App() {
       
       setStep2UploadedSnapshot(uploadedFilesInfo);
       
-      // setInfo('Merging files...');
-      // const mergeStartTime = Date.now();
-      
-      // // File paths for merging
-      // const filePaths = uploadedFilesInfo.map(info => info.filePath).filter(Boolean);
-      
-      // // If all files uploaded successfully, call merge endpoint
-      // if (filePaths.length === multiFiles.length) {
-        //   try {
-          //     const mergeResponse = await api.post('/merge-files', { filePaths });
-          
-          //     const mergeEndTime = Date.now();
-          //     const mergeTime = ((mergeEndTime - mergeStartTime) / 1000).toFixed(2) + ' s';
-          //     setMergeDuration(mergeTime);
-          
-          //     if (mergeResponse.data.success && mergeResponse.data.mergedFilePath) {
-            //       setInfo('Files merged successfully.');
-            
-      //       setUploadedInfo({
-      //         name: 'merged.csv',
-      //         size: mergeResponse.data.size ? `${(mergeResponse.data.size / (1024 * 1024)).toFixed(2)} MB` : '',
-      //         filePath: mergeResponse.data.mergedFilePath,
-      //       });
-      //       setColumns(mergeResponse.data.columns || []);
-      //       setShowStepThree(true);
-      //       fetchAllColumnsInBackground(mergeResponse.data.mergedFilePath);
-      //     } else {
-      //       setError('Files merged failed.');
-      //       setInfo('');
-      //     }
-      //   } catch (error) {
-      //     setError('Files merge failed.');
-      //   }
-      // }
       return;
     }
 
@@ -485,6 +453,13 @@ function App() {
           size: (file.size / 1024 / 1024).toFixed(2) + ' MB',
           filePath: uploadedFilePath,
         });
+
+        setChosenColumns([{
+          filePath: uploadedFilePath,
+          illnessColumn: '',
+          sampleColumn: '',
+          includeInMerge: true
+        }]);
 
         setStep2UploadedSnapshot({
           name: file.name,
@@ -589,28 +564,80 @@ function App() {
 
   // wrapper used by SearchableColumnList components in Step 3:
   const handleIllnessColumnSelectionForFile = (col) => {
+    // update per-file choice
     updateChosenColumnForFile(activeUploadedIndex, 'illnessColumn', col);
+
     // also keep global selection for current view (so existing flow still works)
     setSelectedIllnessColumn(col);
+
+    // If this is a multi-file project and a merge was already done, changing any per-file selection invalidates the merge:
+    if (Array.isArray(multiUploadedInfo) && multiUploadedInfo.length > 1 && mergeDone) {
+      setMergeDone(false);
+      setShowStepFour(false);               // close Step 4
+      setSelectedMergedIllnessColumn('');   // clear merged-column selection
+      setselectedClasses([]);               // clear selected classes
+      setClassTable({ class: [] });         // clear class table/chart
+      setInfo('File selection changed — please Merge Files again to continue to Step 4.');
+      // keep the per-file selection updated (user just changed it)
+      setTimeout(() => setInfo(''), 5000);
+    }
+
     // call existing logic to fetch classes based on current uploadedInfo.filePath
     handleIllnessColumnSelection(col);
   };
 
   const handleSampleColumnSelectionForFile = (col) => {
+    // update per-file choice
     updateChosenColumnForFile(activeUploadedIndex, 'sampleColumn', col);
+
     setSelectedSampleColumn(col);
+
+    // Invalidate previous merge when sample ID changes in multi-file scenario
+    if (Array.isArray(multiUploadedInfo) && multiUploadedInfo.length > 1 && mergeDone) {
+      setMergeDone(false);
+      setShowStepFour(false);
+      setSelectedMergedIllnessColumn('');
+      setselectedClasses([]);
+      setClassTable({ class: [] });
+      setInfo('File selection changed — please Merge Files again to continue to Step 4.');
+      setTimeout(() => setInfo(''), 5000);
+    }
+
     handleSampleColumnSelection(col);
+  };
+
+  const toggleIncludeInMerge = (index, include) => {
+    setChosenColumns(prev => {
+      const copy = Array.isArray(prev) ? [...prev] : [];
+      copy[index] = { ...(copy[index] || {}), includeInMerge: include };
+      // if unchecked, clear selections for that file
+      if (!include) {
+        copy[index].illnessColumn = '';
+        copy[index].sampleColumn = '';
+        // if this file is currently active in the UI, clear per-file/global selections shown
+        if (activeUploadedIndex === index) {
+          setSelectedIllnessColumn('');
+          setSelectedSampleColumn('');
+          setClassTable({ class: [] });
+          setselectedClasses([]);
+        }
+      }
+      return copy;
+    });
+    setMergeDone(false);
   };
 
   const handleMergeAfterStep3 = async () => {
     // validate
-    if (!chosenColumns || chosenColumns.length < 2) {
-      setError('Please select Patient Group & Sample ID for each uploaded file before merging.');
+    // Only consider files that are included for merge
+    const included = Array.isArray(chosenColumns) ? chosenColumns.filter(c => c?.includeInMerge) : [];
+    if (!included || included.length < 2) {
+      setError('Please select at least two files to merge (use the checkboxes on the left).');
       return;
     }
-    const incomplete = chosenColumns.some(c => !c.illnessColumn || !c.sampleColumn || !c.filePath);
+    const incomplete = included.some(c => !c.illnessColumn || !c.sampleColumn || !c.filePath);
     if (incomplete) {
-      setError('Some files are missing selections. Please complete selections for all files.');
+      setError('Some included files are missing selections. Please complete selections for included files before merging.');
       return;
     }
 
@@ -621,10 +648,11 @@ function App() {
     const mergeStart = Date.now();
     console.log("Merging files with chosen columns:", chosenColumns);
     try {
-      const res = await api.post('/merge-files', { chosenColumns }); // backend should accept this structure
+      const res = await api.post('/merge-files', { chosenColumns: included }); // send only included ones
       if (res.data.success && res.data.mergedFilePath) {
         const mergeTime = ((Date.now() - mergeStart) / 1000).toFixed(2) + ' s';
         setMergeDuration(mergeTime);
+        setMergeDone(true);
         setUploadedInfo({
           name: 'merged.csv',
           size: res.data.size ? `${(res.data.size / (1024*1024)).toFixed(2)} MB` : '',
@@ -686,10 +714,12 @@ function App() {
         }, 100);
       } else {
         setError(res.data.message || 'Merge failed.');
+        setMergeDone(false);
       }
     } catch (err) {
       console.error(err);
       setError('Merge request failed.');
+      setMergeDone(false);
     } finally {
       setLoading(false);
       setIsMerging(false);
@@ -748,13 +778,13 @@ function App() {
             });
             setselectedClasses([]); // Reset selected classes since new column is selected
 
-            const multiUploadInProgressAgain = Array.isArray(multiUploadedInfo) && multiUploadedInfo.length > 1 && !mergeDuration;
-            if (selectedSampleColumn && illnessColumn && !multiUploadInProgressAgain) {
-                setShowStepFour(true);
-                setTimeout(() => {
-                    if (stepFourRef.current) scrollToStep(stepFourRef);
-                }, 100);
-            }
+            // const multiUploadInProgressAgain = Array.isArray(multiUploadedInfo) && multiUploadedInfo.length > 1 && !mergeDuration;
+            // if (selectedSampleColumn && illnessColumn && !multiUploadInProgressAgain) {
+            //     setShowStepFour(true);
+            //     setTimeout(() => {
+            //         if (stepFourRef.current) scrollToStep(stepFourRef);
+            //     }, 100);
+            // }
         
       } else {
         setError('Failed to retrieve classes for the selected column.');
@@ -782,19 +812,19 @@ function App() {
     setSelectedSampleColumn(sampleColumn);
     
     // If Patient Group column is also selected, scroll to Step 4
-    const multiUploadInProgress = Array.isArray(multiUploadedInfo) && multiUploadedInfo.length > 1 && !mergeDuration;
-    if (selectedIllnessColumn && sampleColumn && !multiUploadInProgress) {
-        setShowStepFour(true);
-        setTimeout(() => {
-            if (stepFourRef.current) scrollToStep(stepFourRef);
-        }, 100);
-    }
+    // const multiUploadInProgress = Array.isArray(multiUploadedInfo) && multiUploadedInfo.length > 1 && !mergeDuration;
+    // if (selectedIllnessColumn && sampleColumn && !multiUploadInProgress) {
+    //     setShowStepFour(true);
+    //     setTimeout(() => {
+    //         if (stepFourRef.current) scrollToStep(stepFourRef);
+    //     }, 100);
+    // }
   };
 
   // Show Step 4: When both columns (Illness & Sample) are selected
   useEffect(() => {
     // Eðer çoklu dosya yüklendiyse ve henüz merge yapýlmadýysa -> Step 4'ü hiçbir koþulda otomatik açma
-    const multiUploadInProgress = Array.isArray(multiUploadedInfo) && multiUploadedInfo.length > 1 && !mergeDuration;
+    const multiUploadInProgress = Array.isArray(multiUploadedInfo) && multiUploadedInfo.length > 1 && !mergeDone;
 
     if (multiUploadInProgress) {
       setShowStepFour(false);
@@ -830,7 +860,7 @@ function App() {
     setselectedClasses([]);
     if (!selectedIllnessColumn) setClassTable({ class: [] });
 
-  }, [selectedIllnessColumn, selectedSampleColumn, multiUploadedInfo, mergeDuration, chosenColumns, stepFourRef, scrollToStep]);
+  }, [selectedIllnessColumn, selectedSampleColumn, multiUploadedInfo, mergeDuration, chosenColumns, stepFourRef, scrollToStep, mergeDone]);
 
   // Show Step 5: When Step 4 is visible and 2 classes are selected
   useEffect(() => {
@@ -1623,13 +1653,29 @@ function App() {
                               cursor: 'pointer',
                               background: idx === activeUploadedIndex ? '#e6f2ff' : '#fff',
                               border: '1px solid #ddd',
-                              borderRadius: '4px'
+                              borderRadius: '4px',
+                              display: 'flex',
+                              alignItems: 'center'
                             }}
                           >
-                            <div style={{ fontWeight: 700 }}>{truncateFileName(u.name, 30)}</div>
-                            <div style={{ fontSize: '12px', color: '#666' }}>{u.size}</div>
-                            <div style={{ fontSize: '11px', color: '#888' }}>
-                              Patient Group: {chosenColumns[idx]?.illnessColumn || '?'} - Sample ID: {chosenColumns[idx]?.sampleColumn || '?'}
+                            {/* Checkbox to include/exclude file in merge */}
+                            <input
+                              type="checkbox"
+                              checked={chosenColumns[idx]?.includeInMerge ?? true}
+                              onChange={(e) => {
+                                // stop event bubbling so clicking checkbox doesn't trigger selecting the file
+                                e.stopPropagation();
+                                toggleIncludeInMerge(idx, e.target.checked);
+                              }}
+                              style={{ marginRight: '10px' }}
+                              title="Include this file in the merge"
+                            />
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: 700 }}>{truncateFileName(u.name, 30)}</div>
+                              <div style={{ fontSize: '12px', color: '#666' }}>{u.size}</div>
+                              <div style={{ fontSize: '11px', color: '#888' }}>
+                                Patient Group: {chosenColumns[idx]?.illnessColumn || '?'} - Sample ID: {chosenColumns[idx]?.sampleColumn || '?'}
+                              </div>
                             </div>
                           </li>
                         ))}
