@@ -1,5 +1,6 @@
 import './css/App.css';
 import React, { useState, useRef , useEffect, useMemo, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import BarChartWithSelection from './components/step4_BarChartWithSelection';
 import AnalysisSelection from './components/step5_AnalysisSelection';
 import ImagePopup from './components/step8-1_ImagePopup'; // Import the component
@@ -8,8 +9,11 @@ import AnalysisReport from './components/step9_AnalysisReport';
 import SearchableColumnList from './components/SearchableColumnList'; // IMPORT THE NEW COMPONENT
 import { api, buildUrl } from './api';
 import UserGuideModal from './components/UserGuideModal';
+import UserMenu from './components/UserMenu';
 
 function App() {
+  const navigate = useNavigate();
+  
   // These are global variables. Values defined inside functions are not accessible everywhere. These solve that problem.
   // State Variables
   const [file, setFile] = useState(null);
@@ -94,6 +98,36 @@ function App() {
   const [demoMode, setDemoMode] = useState(false);   // Add demo mode to the app state
   const [imageVersion, setImageVersion] = useState(0);
   const [showUserGuide, setShowUserGuide] = useState(false); // Controls user guide modal
+  const [token, setToken] = useState(localStorage.getItem('token') || null);
+
+  // Validate token on app load
+  useEffect(() => {
+    const validateToken = async () => {
+      const storedToken = localStorage.getItem('token');
+      if (storedToken && storedToken.includes('.')) { // Only validate JWT tokens, not guest UUIDs
+        try {
+          await api.get('/auth/me');
+          // Token is valid, keep it
+        } catch (error) {
+          // Token is invalid or expired
+          if (error.response?.status === 401) {
+            console.log('Token expired or invalid, logging out...');
+            localStorage.removeItem('token');
+            setToken(null);
+          }
+        }
+      }
+    };
+    validateToken();
+  }, []);
+
+  // Helper function to check if user is a guest (UUID token) vs logged in (JWT token)
+  const isGuestUser = () => {
+    if (!token) return false;
+    // JWT tokens have 3 parts separated by dots (header.payload.signature)
+    // UUID tokens are just a single string with hyphens
+    return !token.includes('.');
+  };
 
   // State for upload duration (file upload time)
   const [uploadDuration, setUploadDuration] = useState(null);
@@ -529,7 +563,7 @@ function App() {
     // set active file immediately (visual feedback)
     setActiveUploadedIndex(index);
     const info = multiUploadedInfo[index];
-    setUploadedInfo(info); // step3/step4 için kullanýlacak
+    setUploadedInfo(info); // step3/step4 iï¿½in kullanï¿½lacak
 
     // Disable column selectors and clear old columns while loading new ones
     setLoadingAllColumns(true);
@@ -625,8 +659,12 @@ function App() {
       if (res.data.success && res.data.mergedFilePath) {
         const mergeTime = ((Date.now() - mergeStart) / 1000).toFixed(2) + ' s';
         setMergeDuration(mergeTime);
+        
+        // Build filename from source files
+        const sourceFilenames = multiUploadedInfo.map(info => info.name).join(', ');
+        
         setUploadedInfo({
-          name: 'merged.csv',
+          name: sourceFilenames,
           size: res.data.size ? `${(res.data.size / (1024*1024)).toFixed(2)} MB` : '',
           filePath: res.data.mergedFilePath
         });
@@ -793,13 +831,13 @@ function App() {
 
   // Show Step 4: When both columns (Illness & Sample) are selected
   useEffect(() => {
-    // Eðer çoklu dosya yüklendiyse ve henüz merge yapýlmadýysa -> Step 4'ü hiçbir koþulda otomatik açma
+    // Eï¿½er ï¿½oklu dosya yï¿½klendiyse ve henï¿½z merge yapï¿½lmadï¿½ysa -> Step 4'ï¿½ hiï¿½bir koï¿½ulda otomatik aï¿½ma
     const multiUploadInProgress = Array.isArray(multiUploadedInfo) && multiUploadedInfo.length > 1 && !mergeDuration;
 
     if (multiUploadInProgress) {
       setShowStepFour(false);
 
-      // Bilgilendirme: tüm dosyalar için seçim tamamlandýysa farklý mesaj göster
+      // Bilgilendirme: tï¿½m dosyalar iï¿½in seï¿½im tamamlandï¿½ysa farklï¿½ mesaj gï¿½ster
       const allFilesHaveSelection = Array.isArray(chosenColumns)
         && chosenColumns.length === multiUploadedInfo.length
         && chosenColumns.every(c => c && c.illnessColumn && c.sampleColumn);
@@ -822,7 +860,7 @@ function App() {
       return;
     }
 
-    // Her iki kolon da seçili deðilse sonraki adýmlarý gizle
+    // Her iki kolon da seï¿½ili deï¿½ilse sonraki adï¿½mlarï¿½ gizle
     setShowStepFour(false);
     setShowStepFive(false);
     setShowStepSix(false);
@@ -1427,16 +1465,94 @@ function App() {
     }
   }, [analyzing, scrollToStep]);
 
+  const handleLogout = () => {
+    // Clear auth token from state and storage
+    setToken(null);
+    localStorage.removeItem('token');
+
+    // Reset upload / file related state
+    setFile(null);
+    setMultiFiles([]);
+    setUploadedInfo(null);
+    setMultiUploadedInfo([]);
+    setMergeDuration(null);
+    setStep2UploadedSnapshot(null);
+    setActiveUploadedIndex(0);
+
+    // Reset UI step state
+    setShowStepOne(true);
+    setShowStepTwo(false);
+    setShowStepThree(false);
+    setShowStepFour(false);
+    setShowStepFive(false);
+    setShowStepSix(false);
+    setShowStepAnalysis(false);
+
+    // Reset analysis-related state
+    setPreviousAnalyses([]);
+    setAnalysisInformation([]);
+    setAfterFeatureSelection(false);
+    setselectedClasses([]);
+    setAnotherAnalysis([0]);
+    setProcessing(false);
+    setAnalyzing(false);
+
+    // Reset columns / selections
+    setColumns([]);
+    setAllColumns([]);
+    columnsCacheRef.current = {};
+    setChosenColumns([]);
+    setSelectedMergedIllnessColumn('');
+    setSelectedIllnessColumn('');
+    setSelectedSampleColumn('');
+    setNonFeatureColumns([]);
+    setAvailableClassPairs([]);
+
+    // Misc
+    setInfo('');
+    setError('');
+    setUploading(false);
+    setLoading(false);
+    setIsMerging(false);
+
+    console.log("User logged out and application state reset");
+    
+    // Navigate to login page
+    navigate('/login');
+  };
+  
+  // ensure localStorage cleared on logout
+  useEffect(() => {
+    if (token === null) {
+      localStorage.removeItem('token');
+    }
+  }, [token]);
+  console.log("Rendering App with token:", token);
+
   return (
     <div>
       <header className="app-header">
-        <img src={process.env.PUBLIC_URL + "/logo192.png"} alt="Logo" />
-        <span>BIOMARKER ANALYSIS TOOL</span>
-        <button className="user-guide-link" onClick={handleOpenUserGuide}>
-          <span>User</span>
-          <span>Guide</span>
-        </button>
+        <img
+          src={process.env.PUBLIC_URL + "/logo192.png"}
+          alt="Logo"
+          className="logo"
+        />
+        <span className="app-title">BIOMARKER ANALYSIS TOOL</span>
+
+        <div className="header-buttons">
+          <UserMenu 
+            isGuest={isGuestUser()}
+            onNavigateToLogin={() => navigate('/login')}
+            onLogout={handleLogout}
+          />
+
+          <button className="user-guide-link" onClick={handleOpenUserGuide}>
+            <span>User</span>
+            <span>Guide</span>
+          </button>
+        </div>
       </header>
+
       {/* Render User Guide Modal */}
       {showUserGuide && <UserGuideModal onClose={handleCloseUserGuide} />}
       {/* Step 1: Browse file*/}
@@ -1498,7 +1614,6 @@ function App() {
         </div>
       </div>
       )}
-      
       {/* Step 1: Format popup */}
       {showFormatPopup && <InputFormatPopup onClose={handleCloseFormatPopup} />}
       

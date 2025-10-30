@@ -3,28 +3,9 @@ import jsPDF from 'jspdf';
 import '../css/step9-generateAnalysisReport.css';
 import { buildUrl } from '../api';
 
-/**
- * Component for generating biomarker analysis report
- *
- * IMPORTANT: The `analysisResults` prop from `App.js` is expected to have the following structure for each analysis:
- * {
- *   title: string,        // e.g., "Analysis 1"
- *   images: Array<{ id: string, path: string, caption: string }>,
- *   classPair: string,    // e.g., "Disease vs Healthy"
- *   date: string,         // Date of analysis
- *   time: string,         // Execution time
- *   types: {              // Analysis types
- *     differential?: string[],
- *     clustering?: string[],
- *     classification?: string[]
- *   },
- *   parameters?: object    // Optional extra parameters (e.g., for caption generation)
- * }
- */
+// Component for generating biomarker analysis report
 const AnalysisReport = ({ 
   analysisResults, // This prop should have the enriched structure described above
-  // The following global props can still be used for a general report title or summary for all analyses,
-  // but main details now come from `analysisResults`.
   analysisDate, 
   executionTime, 
   selectedClasses, // Global - last selected or general context
@@ -342,7 +323,10 @@ const AnalysisReport = ({
             // Load the summary image directly (avoid html2canvas and DOM dependency)
             const img = new Image();
             img.crossOrigin = 'Anonymous';
-            img.src = summaryAnalysis.imagePath;
+            // Use buildUrl to construct proper URL with base URL
+            img.src = summaryAnalysis.imagePath.startsWith('http') 
+              ? summaryAnalysis.imagePath 
+              : buildUrl(`/${summaryAnalysis.imagePath}`);
 
             await new Promise((resolve, reject) => {
               img.onload = () => resolve();
@@ -455,7 +439,10 @@ const AnalysisReport = ({
                     
                     const img = new Image();
                     img.crossOrigin = "Anonymous";
-                    img.src = analysis.images[j].path;
+                    // Use buildUrl to construct proper URL with base URL
+                    img.src = analysis.images[j].path.startsWith('http') 
+                      ? analysis.images[j].path 
+                      : buildUrl(`/${analysis.images[j].path}`);
                     
                     await new Promise((resolve, reject) => {
                       img.onload = () => {
