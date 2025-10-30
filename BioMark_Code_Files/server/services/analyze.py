@@ -435,7 +435,7 @@ if __name__ == "__main__":
     except Exception:
         pass
 
-    # Filter data for selected classes — handle multiple cell formats:
+    # Filter data for selected classes - handle multiple cell formats:
     #  - plain values (numeric or string)
     #  - list-like strings ("['1','2']")
     #  - delimited strings ("1;2" or "1,2")
