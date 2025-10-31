@@ -143,7 +143,7 @@ export default function ProfilePage() {
       <div className="profile-container">
         <div className="profile-header">
           <button className="back-button" onClick={() => navigate('/')}>
-            ← Back to Home
+            &#11013; Back to Home
           </button>
           <h1>My Profile</h1>
         </div>
@@ -151,21 +151,21 @@ export default function ProfilePage() {
         {/* User Stats */}
         <div className="stats-grid">
           <div className="stat-card">
-            <div className="stat-icon">📁</div>
+            <div className="stat-icon">&#128193;</div>
             <div className="stat-info">
               <div className="stat-value">{stats.totalUploads}</div>
               <div className="stat-label">Total Uploads</div>
             </div>
           </div>
           <div className="stat-card">
-            <div className="stat-icon">📊</div>
+            <div className="stat-icon">&#128202;</div>
             <div className="stat-info">
               <div className="stat-value">{stats.totalAnalyses}</div>
               <div className="stat-label">Analyses Completed</div>
             </div>
           </div>
           <div className="stat-card">
-            <div className="stat-icon">📅</div>
+            <div className="stat-icon">&#128197;</div>
             <div className="stat-info">
               <div className="stat-value">{stats.accountCreated ? new Date(stats.accountCreated).toLocaleDateString() : 'N/A'}</div>
               <div className="stat-label">Member Since</div>
