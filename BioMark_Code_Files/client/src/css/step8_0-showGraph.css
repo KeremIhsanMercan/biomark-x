@@ -69,6 +69,21 @@
 }
 /* Until here is for app.js, below is for ImagePopup.js */
 
+.button.perform-pathway-analysis {
+  background-color: #4CAF50; /* Yeþil renk */
+  color: black;
+  font-weight: bold;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.button.perform-pathway-analysis:hover {
+  background-color: #45a049;
+}
+
 /* Post Analysis Options */
 .post-analysis-options {
     display: flex;
@@ -92,7 +107,7 @@
   background-color: #f08080; /* Reddish color */
   color: black;
   font-weight: bold;
-  margin-top: 30px;
+  margin-top: 0px;
 }
 
 .post-analysis-options .perform-analysis:hover {
@@ -103,7 +118,6 @@
   background-color: #ffd700; /* Gold color */
   color: black;
   font-weight: bold;
-  margin-bottom: 20px;
 }
 
 .post-analysis-options .start-over:hover {

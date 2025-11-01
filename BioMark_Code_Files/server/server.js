@@ -9,6 +9,7 @@ const sessionMiddleware = require('./middleware/session');
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
 const authMiddleware = require('./middleware/auth');
+const pathwayAnalysisRoutes = require('./routes/pathwayAnalysis');
 
 const { spawn } = require('child_process');
 
@@ -31,6 +32,7 @@ app.use(authMiddleware); // Middleware to extract user info from token
 
 // User routes (protected)
 app.use('/api/user', userRoutes);
+app.use('/api', pathwayAnalysisRoutes);
 
 // Helper function to get the correct python command depending on the OS
 const getPythonCommand = () => {

@@ -95,6 +95,7 @@ function App() {
   const stepFiveRef = useRef(null);
   const stepSixRef = useRef(null);
   const stepAnalysisRef = useRef(null);
+  const [pathwayLoading, setPathwayLoading] = useState(false);
   const pageRef = useRef(null);   // You can define refs for other steps as well.
   const [demoMode, setDemoMode] = useState(false);   // Add demo mode to the app state
   const [imageVersion, setImageVersion] = useState(0);
@@ -1548,7 +1549,33 @@ function App() {
     // Navigate to login page
     navigate('/login');
   };
-  
+
+  const handlePerformPathwayAnalysis = async () => {
+  console.log("Perform Pathway Analysis button clicked");
+  setPathwayLoading(true); 
+  setInfo("Pathway analysis is being prepared...");
+
+  try {
+    const response = await api.post('/api/pathway-analysis', {
+      filePath: uploadedInfo?.filePath,
+      selectedClasses: selectedClasses,
+    });
+
+    if (response.data.success) {
+      setInfo("Pathway analysis completed successfully!");
+      console.log("Pathway analysis result:", response.data);
+      // Burada pathway analizi sonuçlarýný iþleyebilirsiniz (örneðin, görselleri veya metni göstermek)
+    } else {
+      setError(response.data.message || "Pathway analysis failed.");
+    }
+  } catch (error) {
+    console.error("Error during pathway analysis:", error);
+    setError("An error occurred during pathway analysis. Please try again.");
+  } finally {
+    setPathwayLoading(false);
+  }
+};
+      
   // ensure localStorage cleared on logout
   useEffect(() => {
     if (token === null) {
@@ -2177,6 +2204,23 @@ function App() {
               {/* Perform Another Analysis */}
               {index === anotherAnalysis.length - 1 && (          
                 <div className="post-analysis-options">
+                  {pathwayLoading && (
+                    <div className="loading-message">
+                      <div className="spinner"></div>
+                      Pathway analysis is running...
+                    </div>
+                  )}
+                  {/* "Perform Pathway Analysis" button */}
+                  <button
+                    className="button perform-pathway-analysis"
+                    onClick={handlePerformPathwayAnalysis}
+                    disabled={pathwayLoading}
+                  >
+                    Perform Pathway Analysis
+                  </button>
+                  <div className="or-container">
+                    <h1 className="or-text">OR</h1>
+                  </div>
                   {/* "Perform Another Analysis on Your Dataset" button */}
                   <button
                     className="button perform-analysis"
