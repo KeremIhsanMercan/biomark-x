@@ -149,7 +149,7 @@ export default function AnalysisResultsPage() {
       <div className="analysis-container">
         <div className="analysis-header">
           <button className="back-button" onClick={() => navigate('/')}>
-            ← Back to Home
+            &#11013; Back to Home
           </button>
           <h1>My Analysis Results</h1>
           <p className="subtitle">View and manage your analysis history</p>
@@ -159,7 +159,7 @@ export default function AnalysisResultsPage() {
 
         {analyses.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-icon">📊</div>
+            <div className="empty-icon">&#129335;</div>
             <h3>No analyses yet</h3>
             <p>Upload data and run analyses to see your results here</p>
             <button className="primary-button" onClick={() => navigate('/')}>
@@ -187,13 +187,13 @@ export default function AnalysisResultsPage() {
                       className="view-button"
                       onClick={() => handleViewResults(analysis)}
                     >
-                      �️ View Details
+                      &#128270; View Details
                     </button>
                     <button 
                       className="download-button"
                       onClick={() => handleDownloadReport(analysis)}
                     >
-                      📥 Download Report
+                      &#128229; Download Report
                     </button>
                   </div>
                 )}

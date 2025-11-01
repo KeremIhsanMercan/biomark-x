@@ -87,7 +87,7 @@ export default function AnalysisDetailPage() {
         <div className="detail-container">
           <div className="error-message">{error || 'Analysis not found'}</div>
           <button className="back-button" onClick={() => navigate('/my-analyses')}>
-            ← Back to Analyses
+            &#11013; Back to Analyses
           </button>
         </div>
       </div>
@@ -98,7 +98,7 @@ export default function AnalysisDetailPage() {
     <div className="analysis-detail-page">
       <div className="detail-container">
         <button className="back-button" onClick={() => navigate('/my-analyses')}>
-          ← Back to My Analyses
+          &#11013; Back to My Analyses
         </button>
 
         <div className="detail-header">
@@ -221,7 +221,7 @@ export default function AnalysisDetailPage() {
                           rel="noopener noreferrer"
                           className="view-full-link"
                         >
-                          View Full Size →
+                          View Full Size &#8594;
                         </a>
                       </>
                     ) : (

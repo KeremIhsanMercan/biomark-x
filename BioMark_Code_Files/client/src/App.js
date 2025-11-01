@@ -688,7 +688,7 @@ function App() {
         setMergeDuration(mergeTime);
         setMergeDone(true);
         setUploadedInfo({
-          name: sourceFilenames,
+          name: res.data.mergedFileName,
           size: res.data.size ? `${(res.data.size / (1024*1024)).toFixed(2)} MB` : '',
           filePath: res.data.mergedFilePath
         });
@@ -858,7 +858,7 @@ function App() {
   // Show Step 4: When both columns (Illness & Sample) are selected
   useEffect(() => {
     // Eï¿½er ï¿½oklu dosya yï¿½klendiyse ve henï¿½z merge yapï¿½lmadï¿½ysa -> Step 4'ï¿½ hiï¿½bir koï¿½ulda otomatik aï¿½ma
-    const multiUploadInProgress = Array.isArray(multiUploadedInfo) && multiUploadedInfo.length > 1 && !mergeDuration;
+    // const multiUploadInProgress = Array.isArray(multiUploadedInfo) && multiUploadedInfo.length > 1 && !mergeDuration;
     // Eðer çoklu dosya yüklendiyse ve henüz merge yapýlmadýysa -> Step 4'ü hiçbir koþulda otomatik açma
     const multiUploadInProgress = Array.isArray(multiUploadedInfo) && multiUploadedInfo.length > 1 && !mergeDone;
 
