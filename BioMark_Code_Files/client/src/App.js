@@ -687,11 +687,13 @@ function App() {
         const mergeTime = ((Date.now() - mergeStart) / 1000).toFixed(2) + ' s';
         setMergeDuration(mergeTime);
         setMergeDone(true);
-        setUploadedInfo({
+        const mergedFileInfo = {
           name: res.data.mergedFileName,
           size: res.data.size ? `${(res.data.size / (1024*1024)).toFixed(2)} MB` : '',
           filePath: res.data.mergedFilePath
-        });
+        };
+        setUploadedInfo(mergedFileInfo);
+        setStep2UploadedSnapshot(mergedFileInfo);
         
         setColumns(res.data.columns || []);
         setAllColumns(res.data.columns || []);
@@ -2326,7 +2328,22 @@ function App() {
                       classPair: analysis.classPair ? analysis.classPair.split('_').join(' vs ') : 'All Classes',
                       imagePath: buildUrl(`/${analysis.imagePath}?t=${analysis.timestamp}&v=${analysis.version}`)
                     }))}
-                    datasetFileName={uploadedInfo?.name || 'Unknown File'}
+                    datasetFileName={(() => {
+                      // Try multiple sources to get the filename
+                      // 1. From uploadedInfo (current file)
+                      if (uploadedInfo?.name) return uploadedInfo.name;
+                      // 2. From step2UploadedSnapshot (uploaded/merged file snapshot)
+                      if (step2UploadedSnapshot?.name) return step2UploadedSnapshot.name;
+                      // 3. From the first analysis's filePath
+                      if (analysisInformation.length > 0 && analysisInformation[0]?.filePath) {
+                        const fullPath = analysisInformation[0].filePath;
+                        const fileName = fullPath.split('/').pop();
+                        // Remove UUID prefix if present (36 chars + underscore)
+                        const firstUnderscore = fileName.indexOf('_');
+                        return firstUnderscore > 0 ? fileName.substring(firstUnderscore + 1) : fileName;
+                      }
+                      return 'Unknown File';
+                    })()}
                   />
                 </div>
               )}
