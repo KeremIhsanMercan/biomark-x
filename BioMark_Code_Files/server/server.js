@@ -300,9 +300,26 @@ app.post('/merge-files', async (req, res) => {
         if (code === 0) {
             try {
                 const parsed = JSON.parse(stdout.trim());
+                
+                // Read metadata to get source filenames
+                let mergedFileName = 'merged_file.csv';
+                let size = 0;
+                try {
+                    if (parsed.metadataPath && fs.existsSync(parsed.metadataPath)) {
+                        const metadata = JSON.parse(fs.readFileSync(parsed.metadataPath, 'utf8'));
+                        const sourceFiles = Object.keys(metadata.input_files || {});
+                        mergedFileName = `Merged Files (${sourceFiles.join(', ')})`;
+                        size = metadata.size_bytes || 0;
+                    }
+                } catch (err) {
+                    console.error('Error reading merge metadata:', err);
+                }
+                
                 return res.json({
                     success: true,
                     mergedFilePath: parsed.mergedFilePath,
+                    mergedFileName: mergedFileName,
+                    size: size,
                     metadataPath: parsed.metadataPath,
                     columns: parsed.columns
                 });
