@@ -80,7 +80,7 @@ router.get('/analyses', verifyToken, (req, res) => {
           if (fs.existsSync(metadataPath)) {
             const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
             const sourceFiles = Object.keys(metadata.input_files || {});
-            analysis.filename = sourceFiles.join(', ');
+            analysis.filename = `Merged Files (${sourceFiles.join(', ')})`;
             analysis.isMerged = true;
             analysis.sourceFiles = sourceFiles;
           } else {
@@ -151,7 +151,7 @@ router.get('/analyses/:id', verifyToken, (req, res) => {
         if (fs.existsSync(metadataPath)) {
           const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf8'));
           const sourceFiles = Object.keys(metadata.input_files || {});
-          analysis.filename = sourceFiles.join(', ');
+          analysis.filename = `Merged Files (${sourceFiles.join(', ')})`;
           analysis.isMerged = true;
           analysis.sourceFiles = sourceFiles;
         } else {
