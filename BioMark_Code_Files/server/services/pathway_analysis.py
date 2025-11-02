@@ -1,54 +1,174 @@
-import os
 import json
-import time
+import os
+import sys
+from typing import List
 
-def perform_pathway_analysis(file_path, selected_classes):
-    """
-    Perform pathway analysis based on the provided file and selected classes.
+import pandas as pd
+from gseapy import enrichr
 
-    Args:
-        file_path (str): Path to the input file.
-        selected_classes (list): List of two selected classes for comparison.
+DEFAULT_GENE_SET = "KEGG_2021_Human"
+DEFAULT_ORGANISM = "Human"
+SIGNIFICANCE_THRESHOLD = 0.05
 
-    Returns:
-        dict: Result of the pathway analysis.
-    """
+
+def ensure_output_directory(base_dir: str, class_pair: str) -> str:
+    results_root = os.path.abspath(base_dir) if base_dir else os.path.abspath(
+        os.path.join(os.path.dirname(__file__), "..", "results")
+    )
+    output_dir = os.path.join(results_root, "pathway_analysis")
+    if class_pair:
+        output_dir = os.path.join(output_dir, class_pair)
+    os.makedirs(output_dir, exist_ok=True)
+    return output_dir
+
+
+def perform_kegg_pathway_analysis(
+    analysis_results: List[str],
+    results_dir: str,
+    class_pair: str = "",
+    organism: str = DEFAULT_ORGANISM,
+):
     try:
-        # Simulate pathway analysis process
-        print(f"Starting pathway analysis for file: {file_path} and classes: {selected_classes}")
-        time.sleep(3)  # Simulate processing time
+        sanitized = [gene.strip() for gene in analysis_results if isinstance(gene, str) and gene.strip()]
+        if not sanitized:
+            summary = "No significant genes found in the analysis results."
+            return {
+                "success": False,
+                "message": summary,
+                "error": "No significant genes available for analysis.",
+                "data": {
+                    "pathwayResults": None,
+                    "summary": summary,
+                    "significantPathwayCount": 0,
+                    "totalPathways": 0,
+                    "inputGeneCount": 0,
+                    "classPair": class_pair or None,
+                },
+            }
 
-        # Generate a mock pathway diagram (replace with actual logic)
-        pathway_diagram_path = os.path.join("results", "pathway_analysis_diagram.png")
-        with open(pathway_diagram_path, "w") as f:
-            f.write("Mock pathway diagram content")
+        # Perform enrichment analysis using gseapy
+        enrichment = enrichr(gene_list=sanitized, gene_sets=DEFAULT_GENE_SET, organism=organism)
+        results = getattr(enrichment, "results", pd.DataFrame())
 
-        # Return the result
-        result = {
+        if results.empty:
+            summary = "No KEGG pathways were returned for the provided genes."
+            output_dir = ensure_output_directory(results_dir, class_pair)
+            output_path = os.path.join(output_dir, "kegg_pathway_analysis_results.csv")
+            results.to_csv(output_path, index=False)
+            return {
+                "success": True,
+                "message": summary,
+                "data": {
+                    "pathwayResults": output_path,
+                    "summary": summary,
+                    "significantPathwayCount": 0,
+                    "totalPathways": 0,
+                    "inputGeneCount": len(sanitized),
+                    "classPair": class_pair or None,
+                },
+            }
+
+        if "Adjusted P-value" in results.columns:
+            results = results.sort_values(by="Adjusted P-value", ascending=True)
+            significant_mask = results["Adjusted P-value"] < SIGNIFICANCE_THRESHOLD
+            significant_pathways = results[significant_mask]
+        else:
+            significant_pathways = pd.DataFrame()
+
+        output_dir = ensure_output_directory(results_dir, class_pair)
+        output_path = os.path.join(output_dir, "kegg_pathway_analysis_results.csv")
+
+        export_frame = significant_pathways if not significant_pathways.empty else results
+        export_frame.to_csv(output_path, index=False)
+
+        significant_count = int(significant_pathways.shape[0]) if not significant_pathways.empty else 0
+        total_count = int(results.shape[0])
+        summary = (
+            f"KEGG pathway analysis completed: {significant_count} of {total_count} pathways "
+            f"passed the significance threshold ({SIGNIFICANCE_THRESHOLD})."
+        )
+
+        return {
             "success": True,
+            "message": summary,
             "data": {
-                "pathwayDiagram": pathway_diagram_path,
-                "summary": f"Pathway analysis completed for classes: {selected_classes}"
-            }
+                "pathwayResults": output_path,
+                "summary": summary,
+                "significantPathwayCount": significant_count,
+                "totalPathways": total_count,
+                "inputGeneCount": len(sanitized),
+                "classPair": class_pair or None,
+            },
         }
-        print(json.dumps(result))  # JSON format
-        return result
-    except Exception as e:
-        print(f"Error during pathway analysis: {e}")
-        error_result = {
+    except Exception as exc:
+        summary = "KEGG pathway analysis failed due to an error."
+        return {
             "success": False,
-            "error": str(e),
+            "message": summary,
+            "error": str(exc),
             "data": {
-                "pathwayDiagram": "results/default_pathway_diagram.png",
-                "summary": "Default pathway analysis result due to an error."
-            }
+                "pathwayResults": None,
+                "summary": summary,
+                "significantPathwayCount": 0,
+                "totalPathways": 0,
+                "inputGeneCount": len(analysis_results) if analysis_results else 0,
+                "classPair": class_pair or None,
+            },
         }
-        print(json.dumps(error_result))  # JSON format error
-        return error_result
+
 
 if __name__ == "__main__":
-    # Example usage
-    file_path = "example_file.csv"
-    selected_classes = ["Class A", "Class B"]
-    result = perform_pathway_analysis(file_path, selected_classes)
-    print(json.dumps(result, indent=2))
+    if len(sys.argv) < 2:
+        failure_payload = {
+            "success": False,
+            "message": "Pathway analysis input file was not provided.",
+            "error": "Usage: python pathway_analysis.py <analysis_results.json> [results_dir] [class_pair]",
+            "data": {
+                "pathwayResults": None,
+                "summary": "Missing input parameters prevented execution.",
+                "significantPathwayCount": 0,
+                "totalPathways": 0,
+                "inputGeneCount": 0,
+                "classPair": None,
+            },
+        }
+        print(json.dumps(failure_payload))
+        sys.exit(1)
+
+    gene_list_path = sys.argv[1]
+    provided_results_dir = sys.argv[2] if len(sys.argv) >= 3 else os.path.join(os.path.dirname(__file__), "..", "results")
+    provided_class_pair = sys.argv[3] if len(sys.argv) >= 4 else ""
+
+    try:
+        with open(gene_list_path, "r", encoding="utf-8") as handle:
+            raw_payload = json.load(handle)
+
+        if isinstance(raw_payload, dict):
+            candidate = raw_payload.get("analysisResults") or raw_payload.get("genes")
+            analysis_results = candidate if isinstance(candidate, list) else []
+        elif isinstance(raw_payload, list):
+            analysis_results = raw_payload
+        else:
+            analysis_results = []
+
+        result = perform_kegg_pathway_analysis(analysis_results, provided_results_dir, provided_class_pair)
+        print(json.dumps(result))
+
+        if not result.get("success", False):
+            sys.exit(1)
+    except Exception as exc:
+        failure_payload = {
+            "success": False,
+            "message": "KEGG pathway analysis failed to start.",
+            "error": str(exc),
+            "data": {
+                "pathwayResults": None,
+                "summary": "Unable to load or parse the input genes.",
+                "significantPathwayCount": 0,
+                "totalPathways": 0,
+                "inputGeneCount": 0,
+                "classPair": provided_class_pair or None,
+            },
+        }
+        print(json.dumps(failure_payload))
+        sys.exit(1)

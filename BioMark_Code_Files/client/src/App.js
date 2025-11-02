@@ -95,7 +95,7 @@ function App() {
   const stepFiveRef = useRef(null);
   const stepSixRef = useRef(null);
   const stepAnalysisRef = useRef(null);
-  const [pathwayLoading, setPathwayLoading] = useState(false);
+  const [pathwayStates, setPathwayStates] = useState({});
   const pageRef = useRef(null);   // You can define refs for other steps as well.
   const [demoMode, setDemoMode] = useState(false);   // Add demo mode to the app state
   const [imageVersion, setImageVersion] = useState(0);
@@ -151,6 +151,22 @@ function App() {
     });
     return Array.from(s);
   }, [chosenColumns]);
+
+  const createEmptyPathwayState = () => ({ result: null, terms: [], error: null, loading: false });
+
+  const updatePathwayState = (key, updates) => {
+    setPathwayStates((prev) => {
+      const safeKey = String(key);
+      const previousState = prev[safeKey] ?? createEmptyPathwayState();
+      return {
+        ...prev,
+        [safeKey]: {
+          ...previousState,
+          ...updates,
+        },
+      };
+    });
+  };
   
   // Helper Function: General function to fetch all columns (will use this function)
   const fetchAllColumnsGeneric = async (filePath) => { // filePath should be passed as a parameter
@@ -1151,21 +1167,27 @@ function App() {
       nFolds: nFolds
     };
 
-    console.log("Running analysis with payload:", payload);
-    setError('');
-    setAnalyzing(true);
+  console.log("Running analysis with payload:", payload);
+  setError('');
+  setAnalyzing(true);
 
     try {
       const response = await api.post('/analyze', payload);
       console.log("Analysis response:", response.data);
       if (response.data.success) {
+      const significantGenes = response.data.significantGenes || [];
+      const resultsDir = response.data.resultsDir || null;
+      const analysisId = response.data.analysisId || null;
+
       // Create a new analysis object and add to previous
       const newAnalysis = {
           results: response.data.imagePaths || [],
           time: response.data.elapsedTime || "N/A",
           date: new Date().toLocaleString('en-GB'),
           parameters: payload,
-          analysisInfo: { ...selectedAnalyzes }
+          analysisInfo: { ...selectedAnalyzes },
+          analysisId,
+          significantGenes
         };
 
         // If differential analysis is performed and "AfterFeatureSelection" folder exists in results, feature selection is done
@@ -1181,7 +1203,13 @@ function App() {
 
         // Update previous analyses and information
         setPreviousAnalyses((prev) => [...prev, newAnalysis]);
-        setAnalysisInformation((prev) => [...prev, payload]);
+        const payloadWithResults = {
+          ...payload,
+          significantGenes,
+          resultsDir,
+          analysisId
+        };
+        setAnalysisInformation((prev) => [...prev, payloadWithResults]);
 
         // After analysis, hide current steps (results will be shown)
       setShowStepOne(false);
@@ -1238,7 +1266,7 @@ function App() {
     setselectedClasses([]);
     setSelectedAnalyzes({ differential: [], clustering: [], classification: [] });
     setUseDefaultParams(true);
-    // Optionally reset parameters as well.
+  // Optionally reset parameters as well.
 
     // IMPORTANT: clear excluded columns so previous excludes do not affect the new analysis
     setNonFeatureColumns([]); // <-- automatic removal of previous excluded columns
@@ -1293,7 +1321,8 @@ function App() {
     setAvailableClassPairs([]);
     setError('');
     setInfo('');
-    setDemoMode(false);
+  setDemoMode(false);
+  setPathwayStates({});
 
     setSelectedAnalyzes({
       differential: [],
@@ -1527,6 +1556,7 @@ function App() {
     setAnotherAnalysis([0]);
     setProcessing(false);
     setAnalyzing(false);
+  setPathwayStates({});
 
     // Reset columns / selections
     setColumns([]);
@@ -1552,32 +1582,204 @@ function App() {
     navigate('/login');
   };
 
-  const handlePerformPathwayAnalysis = async () => {
-  console.log("Perform Pathway Analysis button clicked");
-  setPathwayLoading(true); 
-  setInfo("Pathway analysis is being prepared...");
+  const parseCsvLine = (line) => {
+    const cells = [];
+    let current = '';
+    let inQuotes = false;
 
-  try {
-    const response = await api.post('/api/pathway-analysis', {
-      filePath: uploadedInfo?.filePath,
-      selectedClasses: selectedClasses,
+    for (let i = 0; i < line.length; i += 1) {
+      const char = line[i];
+      if (char === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i += 1;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (char === ',' && !inQuotes) {
+        cells.push(current.trim());
+        current = '';
+      } else {
+        current += char;
+      }
+    }
+
+    cells.push(current.trim());
+    return cells;
+  };
+
+  const parseCsvText = (csvText) => {
+    if (!csvText || typeof csvText !== 'string') {
+      return [];
+    }
+
+    const lines = csvText
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
+
+    if (lines.length <= 1) {
+      return [];
+    }
+
+    const headers = parseCsvLine(lines[0]).map((header) =>
+      header.replace(/^"|"$/g, '').trim()
+    );
+
+    return lines.slice(1).map((line) => {
+      const values = parseCsvLine(line);
+      const entry = {};
+      headers.forEach((header, index) => {
+        const rawValue = values[index] ?? '';
+        entry[header] = rawValue.replace(/^"|"$/g, '').trim();
+      });
+      return entry;
     });
+  };
 
-    if (response.data.success) {
+  const formatPValue = (value) => {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) {
+      return value && value.length > 0 ? value : 'N/A';
+    }
+    if (numeric === 0) {
+      return '< 1e-4';
+    }
+    if (numeric >= 0.01) {
+      return numeric.toFixed(3);
+    }
+    return numeric.toExponential(2);
+  };
+
+  const formatNumericValue = (value) => {
+    const numeric = Number(value);
+    if (!Number.isFinite(numeric)) {
+      return value && value.length > 0 ? value : 'N/A';
+    }
+    if (numeric >= 100 || numeric <= 0.01) {
+      return numeric.toExponential(2);
+    }
+    return numeric.toFixed(2);
+  };
+
+  const formatGeneList = (value) => {
+    if (!value) {
+      return 'N/A';
+    }
+    return value
+      .split(/[;|]/)
+      .map((gene) => gene.trim())
+      .filter((gene) => gene.length > 0)
+      .join(', ');
+  };
+
+  const handlePerformPathwayAnalysis = async (analysisIndex) => {
+    console.log("Perform Pathway Analysis button clicked", analysisIndex);
+
+    if (!analysisInformation || analysisInformation.length === 0) {
+      setError("Run an analysis before launching pathway analysis.");
+      return;
+    }
+
+    const safeIndex = Number.isInteger(analysisIndex)
+      ? Math.max(0, Math.min(analysisIndex, analysisInformation.length - 1))
+      : analysisInformation.length - 1;
+
+    const targetAnalysisInfo = analysisInformation[safeIndex];
+    if (!targetAnalysisInfo) {
+      setError("Selected analysis details could not be found for pathway analysis.");
+      return;
+    }
+
+    const stateKey = String(safeIndex);
+    setInfo("Preparing pathway analysis...");
+    updatePathwayState(stateKey, { loading: true, error: null });
+
+    const significantGenes = Array.isArray(targetAnalysisInfo?.significantGenes)
+      ? targetAnalysisInfo.significantGenes
+          .map((gene) => (typeof gene === 'string' ? gene.trim() : ''))
+          .filter((gene) => gene.length > 0)
+      : [];
+
+    if (significantGenes.length === 0) {
+      const message = "No significant genes available for pathway analysis.";
+      setError(message);
+      updatePathwayState(stateKey, { loading: false, error: message, terms: [], result: null });
+      return;
+    }
+
+    try {
+      const response = await api.post('/api/pathway-analysis', {
+        analysisResults: significantGenes,
+        selectedClasses: targetAnalysisInfo?.selectedClasses || [],
+        resultsDir: targetAnalysisInfo?.resultsDir || null,
+      });
+
+      if (!response.data?.success) {
+        const failureMessage = response.data?.message || "Pathway analysis failed.";
+        setError(failureMessage);
+        updatePathwayState(stateKey, {
+          loading: false,
+          error: failureMessage,
+          terms: [],
+          result: null,
+        });
+        return;
+      }
+
+      setError('');
       setInfo("Pathway analysis completed successfully!");
       console.log("Pathway analysis result:", response.data);
-      // Burada pathway analizi sonuçlarýný iþleyebilirsiniz (örneðin, görselleri veya metni göstermek)
-    } else {
-      setError(response.data.message || "Pathway analysis failed.");
+
+      const payload = response.data.data || {};
+      let parsedRows = [];
+      let fetchErrorMessage = null;
+
+      if (payload.pathwayResults) {
+        try {
+          const csvUrl = buildUrl(`/${payload.pathwayResults}`);
+          const csvResponse = await fetch(csvUrl, { cache: 'no-store' });
+          if (!csvResponse.ok) {
+            throw new Error(`HTTP ${csvResponse.status}`);
+          }
+          const csvText = await csvResponse.text();
+          parsedRows = parseCsvText(csvText);
+        } catch (csvErr) {
+          console.error("Failed to load pathway analysis table:", csvErr);
+          parsedRows = [];
+          fetchErrorMessage = "Pathway table could not be loaded automatically. Use the download link above to open the CSV directly.";
+        }
+      }
+
+      const fallbackSignificantCount = parsedRows.filter((row) => {
+        const adjusted = Number(row['Adjusted P-value']);
+        return Number.isFinite(adjusted) && adjusted <= 0.05;
+      }).length;
+
+      updatePathwayState(stateKey, {
+        loading: false,
+        error: fetchErrorMessage,
+        terms: parsedRows,
+        result: {
+          summary: payload.summary || "KEGG pathway analysis completed.",
+          csvPath: payload.pathwayResults || null,
+          inputGeneCount: payload.inputGeneCount ?? significantGenes.length,
+          totalPathways: payload.totalPathways ?? parsedRows.length,
+          significantPathwayCount: payload.significantPathwayCount ?? fallbackSignificantCount,
+        },
+      });
+    } catch (error) {
+      console.error("Error during pathway analysis:", error);
+      setError("An error occurred during pathway analysis. Please try again.");
+      updatePathwayState(stateKey, {
+        loading: false,
+        error: "An unexpected error occurred while running pathway analysis.",
+        terms: [],
+        result: null,
+      });
     }
-  } catch (error) {
-    console.error("Error during pathway analysis:", error);
-    setError("An error occurred during pathway analysis. Please try again.");
-  } finally {
-    setPathwayLoading(false);
-  }
-};
-      
+  };
+
   // ensure localStorage cleared on logout
   useEffect(() => {
     if (token === null) {
@@ -1672,6 +1874,7 @@ function App() {
       </div>
       )}
       {/* Step 1: Format popup */}
+
       {showFormatPopup && <InputFormatPopup onClose={handleCloseFormatPopup} />}
       
       {/* Step 2: Upload file */}
@@ -1765,8 +1968,15 @@ function App() {
       )}
 
       {/* step 3, step 4, step 5, step 6, step 7 */}
-      {anotherAnalysis.map((id, index) => (
-        <div key={id}>
+      {anotherAnalysis.map((id, index) => {
+        const pathwayState = pathwayStates[String(index)] ?? createEmptyPathwayState();
+        const { result: pathwayResult, terms: pathwayEnrichedTerms, error: pathwayFetchError, loading: pathwayLoading } = pathwayState;
+        const topPathwayRows = Array.isArray(pathwayEnrichedTerms)
+          ? pathwayEnrichedTerms.slice(0, Math.min(pathwayEnrichedTerms.length, 15))
+          : [];
+
+        return (
+          <div key={id}>
           {/* Only show analysis options after the last analysis section */}
           {index === anotherAnalysis.length - 1 && (
             <>
@@ -1811,7 +2021,7 @@ function App() {
                               }}
                               style={{ marginRight: '10px' }}
                               title="Include this file in the merge"
-                            />
+                              />
                             <div style={{ flex: 1 }}>
                               <div style={{ fontWeight: 700 }}>{truncateFileName(u.name, 30)}</div>
                               <div style={{ fontSize: '12px', color: '#666' }}>{u.size}</div>
@@ -1858,7 +2068,7 @@ function App() {
                           listHeight="150px"
                           isLoading={loadingAllColumns}
                           disabled={loadingAllColumns || loadingClasses}
-                        />
+                          />
                       </div>
                     </div>
                   </div>
@@ -1891,7 +2101,7 @@ function App() {
                       listHeight="200px"
                       isLoading={loadingClasses}
                       disabled={loadingClasses || !uploadedInfo?.filePath}
-                    />
+                      />
                     {loadingClasses && <div style={{ marginTop: 8 }}><div className="spinner"></div> Loading classes...</div>}
                   </div>
                 </div>
@@ -2203,8 +2413,96 @@ function App() {
                 </div>
 
               </div>
+
+              {pathwayResult ? (
+                <div className="pathway-results-card">
+                  <div className="pathway-results-header">
+                    <h3>Pathway Analysis Overview</h3>
+                    {pathwayResult.csvPath && (
+                      <a
+                        className="pathway-download-link"
+                        href={buildUrl(`/${pathwayResult.csvPath}`)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        Download full CSV
+                      </a>
+                    )}
+                  </div>
+                  <p className="pathway-summary-text">{pathwayResult.summary}</p>
+                  <div className="pathway-results-metrics">
+                    <span className="pathway-metric-pill">Input genes: {pathwayResult.inputGeneCount ?? 'N/A'}</span>
+                    <span className="pathway-metric-pill">Total pathways: {pathwayResult.totalPathways ?? (pathwayEnrichedTerms.length || 'N/A')}</span>
+                    <span className="pathway-metric-pill">Significant (&lt;= 0.05): {pathwayResult.significantPathwayCount ?? 0}</span>
+                  </div>
+
+                  {topPathwayRows.length > 0 ? (
+                    <>
+                      <p className="pathway-subtitle">
+                        Showing top {topPathwayRows.length} pathways (of {pathwayEnrichedTerms.length})
+                      </p>
+                      <div className="pathway-table-wrapper">
+                        <table className="pathway-results-table">
+                          <thead>
+                            <tr>
+                              <th>#</th>
+                              <th>Pathway</th>
+                              <th>Overlap</th>
+                              <th>Adjusted p-value</th>
+                              <th>Raw p-value</th>
+                              <th>Odds ratio</th>
+                              <th>Genes</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {topPathwayRows.map((row, idx) => {
+                              const term = row.Term || row['Term'] || `Pathway ${idx + 1}`;
+                              const overlap = row.Overlap || row['Overlap'] || 'N/A';
+                              const adjustedValue = row['Adjusted P-value'] ?? row['Adjusted P-Value'];
+                              const rawValue = row['P-value'] ?? row['P-Value'];
+                              const oddsRatioValue = row['Odds Ratio'] ?? row['Odds ratio'] ?? row['OddsRatio'];
+                              const numericAdjusted = Number(adjustedValue);
+                              const pValueClass = Number.isFinite(numericAdjusted) && numericAdjusted <= 0.05 ? 'p-value-strong' : 'p-value-weak';
+
+                              return (
+                                <tr key={`${term}-${idx}`}>
+                                  <td>{idx + 1}</td>
+                                  <td className="pathway-term">{term}</td>
+                                  <td>{overlap}</td>
+                                  <td className={Number.isFinite(numericAdjusted) ? pValueClass : ''}>{formatPValue(adjustedValue)}</td>
+                                  <td>{formatPValue(rawValue)}</td>
+                                  <td>{formatNumericValue(oddsRatioValue)}</td>
+                                  <td className="pathway-genes">{formatGeneList(row.Genes)}</td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                      {pathwayEnrichedTerms.length > topPathwayRows.length && (
+                        <p className="pathway-note">
+                          Additional {pathwayEnrichedTerms.length - topPathwayRows.length} pathway entries are available in the downloaded CSV.
+                        </p>
+                      )}
+                    </>
+                  ) : (
+                    <div className="pathway-empty-state">
+                      No KEGG pathways matched the provided biomarkers. Consider expanding the gene list or mapping miRNAs to target genes before re-running.
+                    </div>
+                  )}
+
+                  {pathwayFetchError && (
+                    <div className="pathway-error-state pathway-inline-error">{pathwayFetchError}</div>
+                  )}
+                </div>
+              ) : (
+                pathwayFetchError ? (
+                  <div className="pathway-error-state">{pathwayFetchError}</div>
+                ) : null
+              )}
+              
               {/* Perform Another Analysis */}
-              {index === anotherAnalysis.length - 1 && (          
+              {index === anotherAnalysis.length - 1 && (
                 <div className="post-analysis-options">
                   {pathwayLoading && (
                     <div className="loading-message">
@@ -2213,16 +2511,20 @@ function App() {
                     </div>
                   )}
                   {/* "Perform Pathway Analysis" button */}
-                  <button
-                    className="button perform-pathway-analysis"
-                    onClick={handlePerformPathwayAnalysis}
-                    disabled={pathwayLoading}
-                  >
-                    Perform Pathway Analysis
-                  </button>
-                  <div className="or-container">
-                    <h1 className="or-text">OR</h1>
-                  </div>
+                  {!pathwayResult && (
+                    <>
+                      <button
+                        className="button perform-pathway-analysis"
+                        onClick={() => handlePerformPathwayAnalysis(index)}
+                        disabled={pathwayLoading}
+                      >
+                        Perform Pathway Analysis
+                      </button>
+                      <div className="or-container">
+                        <h1 className="or-text">OR</h1>
+                      </div>
+                    </>
+                  )}
                   {/* "Perform Another Analysis on Your Dataset" button */}
                   <button
                     className="button perform-analysis"
@@ -2291,22 +2593,22 @@ function App() {
 
                   {/* Summarize Analyses */}
                   {summarizeAnalyses.length > 0 && (
-                  <div className="summarize-analyses-container">
-                    {summarizeAnalyses.map((summary, idx) => (
-                      <div key={`${summary.timestamp}-${idx}`} className="summary-analysis-block">
-                        <h3 className="class-pair-title">
+                    <div className="summarize-analyses-container">
+                      {summarizeAnalyses.map((summary, idx) => (
+                        <div key={`${summary.timestamp}-${idx}`} className="summary-analysis-block">
+                          <h3 className="class-pair-title">
                             Summary for: {summary.classPair.split('_').join(' vs ')} (Top-{summary.featureCount} Features)
-                        </h3>
-                        <div className="summary-image-container">
-                          <ImagePopup 
-                            key={`summary-image-${summary.timestamp}-${summary.version}`}
-                            imagePath={buildUrl(`/${summary.imagePath}?t=${summary.timestamp}&v=${summary.version}`)}
-                          />
+                          </h3>
+                          <div className="summary-image-container">
+                            <ImagePopup 
+                              key={`summary-image-${summary.timestamp}-${summary.version}`}
+                              imagePath={buildUrl(`/${summary.imagePath}?t=${summary.timestamp}&v=${summary.version}`)}
+                            />
+                          </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                      ))}
+                    </div>
+                  )}
 
                   {/* Analysis Report - always visible */}
                   <AnalysisReport
@@ -2393,8 +2695,9 @@ function App() {
               )}
             </>
           )}
-        </div>
-      ))}
+          </div>
+        );
+      })}
 
     </div>
   );

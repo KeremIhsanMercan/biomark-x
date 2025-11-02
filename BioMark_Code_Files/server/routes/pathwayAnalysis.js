@@ -1,73 +1,136 @@
 const express = require('express');
-const router = express.Router();
 const { spawn } = require('child_process');
+const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
-// Pathway Analysis Endpoint
-router.post('/pathway-analysis', async (req, res) => {
-  try {
-    const { filePath, selectedClasses } = req.body;
+const router = express.Router();
 
-    if (!filePath || !selectedClasses || selectedClasses.length !== 2) {
-      return res.status(400).json({
+const getPythonCommand = () => (process.platform === 'win32' ? 'python' : 'python3');
+
+const toRelativeResultPath = (absolutePath) => {
+  if (!absolutePath) {
+    return absolutePath;
+  }
+
+  if (!path.isAbsolute(absolutePath)) {
+    return absolutePath.replace(/\\/g, '/');
+  }
+
+  const serverRoot = path.join(__dirname, '..');
+  return path.relative(serverRoot, absolutePath).replace(/\\/g, '/');
+};
+
+router.post('/pathway-analysis', async (req, res) => {
+  const { analysisResults, selectedClasses = [], resultsDir = null } = req.body ?? {};
+
+  const sanitizedGenes = Array.isArray(analysisResults)
+    ? analysisResults
+        .map((gene) => (typeof gene === 'string' ? gene.trim() : ''))
+        .filter((gene) => gene.length > 0)
+    : [];
+
+  if (sanitizedGenes.length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'No significant genes provided for pathway analysis.',
+    });
+  }
+
+  const pythonCommand = getPythonCommand();
+  const scriptPath = path.join(__dirname, '..', 'services', 'pathway_analysis.py');
+
+  let tempDir;
+  let geneListFile;
+
+  try {
+    tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'biomark-pathway-'));
+    geneListFile = path.join(tempDir, 'significant_genes.json');
+    fs.writeFileSync(geneListFile, JSON.stringify(sanitizedGenes), 'utf8');
+  } catch (err) {
+    console.error('Failed to prepare gene list for pathway analysis:', err);
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to prepare input for pathway analysis.',
+    });
+  }
+
+  const sanitizedClasses = Array.isArray(selectedClasses)
+    ? selectedClasses.map((cls) => String(cls).trim()).filter(Boolean)
+    : [];
+  const classPair = sanitizedClasses.length >= 2 ? `${sanitizedClasses[0]}_${sanitizedClasses[1]}` : '';
+
+  let resolvedResultsDir = path.join(__dirname, '..', 'results');
+  if (resultsDir) {
+    resolvedResultsDir = path.isAbsolute(resultsDir)
+      ? resultsDir
+      : path.join(__dirname, '..', resultsDir);
+  }
+
+  const pythonArgs = [
+    '-Xfrozen_modules=off',
+    scriptPath,
+    geneListFile,
+    resolvedResultsDir,
+    classPair,
+  ];
+
+  const python = spawn(pythonCommand, pythonArgs);
+  let stdout = '';
+  let stderr = '';
+
+  python.stdout.on('data', (data) => {
+    stdout += data.toString();
+  });
+
+  python.stderr.on('data', (data) => {
+    stderr += data.toString();
+  });
+
+  python.on('close', (code) => {
+    try {
+      if (tempDir) {
+        fs.rmSync(tempDir, { recursive: true, force: true });
+      }
+    } catch (cleanupErr) {
+      console.warn('Failed to clean up temporary pathway analysis files:', cleanupErr);
+    }
+
+    if (code !== 0) {
+      console.error('Pathway analysis Python script failed:', stderr || `exit code ${code}`);
+      return res.status(500).json({
         success: false,
-        message: 'Invalid input. Please provide a valid file path and two selected classes.',
+        message: 'Pathway analysis failed.',
+        error: stderr || `Process exited with code ${code}`,
       });
     }
 
-    const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
-    const scriptPath = path.join(__dirname, '../services/pathway_analysis.py');
-    const python = spawn(pythonCommand, [scriptPath, filePath, ...selectedClasses]);
+    try {
+      const parsed = JSON.parse(stdout.trim());
 
-    let output = '';
-    let errorOutput = '';
-
-    python.stdout.on('data', (data) => {
-      output += data.toString();
-    });
-
-    python.stderr.on('data', (data) => {
-      errorOutput += data.toString();
-    });
-    
-
-    python.on('close', (code) => {
-      if (code === 0) {
-        try {
-          const result = JSON.parse(output.trim());
-          console.log('Pathway analysis result:', result);
-          if (result.success) {
-            return res.status(200).json(result);
-          } else {
-            return res.status(500).json({
-              success: false,
-              message: 'Pathway analysis failed.',
-              error: result.error,
-            });
-          }
-        } catch (err) {
-            console.log("Output parsing error:", output);
-            return res.status(500).json({
-            success: false,
-            message: 'Failed to parse pathway analysis result.',
-            error: err.toString(),
-          });
-        }
-      } else {
-        return res.status(500).json({
-          success: false,
-          message: 'Python script failed.',
-          error: errorOutput,
-        });
+      if (parsed?.data?.pathwayResults) {
+        parsed.data.pathwayResults = toRelativeResultPath(parsed.data.pathwayResults);
       }
-    });
-  } catch (error) {
-    console.error('Error in pathway analysis:', error);
-    return res.status(500).json({
-      success: false,
-      message: 'An error occurred during pathway analysis.',
-    });
-  }
+
+      if (parsed.success) {
+        return res.json(parsed);
+      }
+
+      return res.status(500).json({
+        success: false,
+        message: parsed.message || 'Pathway analysis failed.',
+        error: parsed.error || null,
+        data: parsed.data ?? null,
+      });
+    } catch (parseErr) {
+      console.error('Failed to parse pathway analysis output:', parseErr, stdout);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to parse pathway analysis output.',
+        error: parseErr.toString(),
+      });
+    }
+  });
 });
 
 module.exports = router;

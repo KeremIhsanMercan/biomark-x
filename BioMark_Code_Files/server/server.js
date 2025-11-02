@@ -93,6 +93,70 @@ function formatElapsedTime(milliseconds) {
     }
   }
 
+function parseRankedFeaturesCsv(csvContent, limit) {
+    if (!csvContent) {
+        return [];
+    }
+
+    const normalizedContent = csvContent.replace(/\r\n/g, '\n').trim();
+    if (!normalizedContent) {
+        return [];
+    }
+
+    const lines = normalizedContent.split('\n').filter((line) => line.trim().length > 0);
+    if (lines.length <= 1) {
+        return [];
+    }
+
+    const features = [];
+    for (let i = 1; i < lines.length; i += 1) {
+        const raw = lines[i].split(',')[0] ?? '';
+        const feature = raw.replace(/^"|"$/g, '').trim();
+        if (feature) {
+            features.push(feature);
+            if (features.length === limit) {
+                break;
+            }
+        }
+    }
+
+    return features;
+}
+
+function readTopRankedFeatures({ filePath, selectedClasses, limit = 20 }) {
+    try {
+        if (!filePath) {
+            return [];
+        }
+
+        const baseName = path.basename(filePath);
+        const fileNameWithoutExt = path.parse(baseName).name;
+        const classPairKey = Array.isArray(selectedClasses) && selectedClasses.length >= 2
+            ? `${String(selectedClasses[0]).trim()}_${String(selectedClasses[1]).trim()}`
+            : null;
+
+        const candidates = [];
+        if (classPairKey) {
+            candidates.push(path.join(__dirname, 'results', fileNameWithoutExt, 'feature_ranking', classPairKey, 'ranked_features_df.csv'));
+        }
+        candidates.push(path.join(__dirname, 'results', fileNameWithoutExt, 'ranked_features_df.csv'));
+
+        for (const candidate of candidates) {
+            if (fs.existsSync(candidate)) {
+                const csvContent = fs.readFileSync(candidate, 'utf8');
+                const features = parseRankedFeaturesCsv(csvContent, limit);
+                if (features.length > 0) {
+                    return features;
+                }
+            }
+        }
+    } catch (err) {
+        console.error('Failed to read ranked features for pathway analysis:', err);
+    }
+
+    return [];
+}
+
 // step1 - Endpoint for demo data (session-safe)
 app.get('/get-demo-data', (req, res) => {
   console.log('Demo data endpoint called');
@@ -451,6 +515,8 @@ app.post('/analyze', (req, res) => {
 
     // Normalize file path for cross-platform consistency
     const normalizedFilePath = path.normalize(filePath);
+    const baseFileName = path.basename(filePath);
+    const fileNameWithoutExt = path.parse(baseFileName).name;
 
     // Check if it's a merged file (system-generated)
     const isMergedFile = normalizedFilePath.includes(path.join('results', 'merged_files'));
@@ -616,12 +682,22 @@ app.post('/analyze', (req, res) => {
                 console.error('Failed to update analysis record:', err);
             }
 
+            const significantGenes = readTopRankedFeatures({
+                filePath,
+                selectedClasses,
+                limit: Number(numTopFeatures) > 0 ? Number(numTopFeatures) : 20
+            });
+
+            const resultsDirRelative = path.join('results', fileNameWithoutExt);
+
             // Send the response here
             res.json({
                 success: true,
                 analysisId: analysisId,
                 imagePaths: outputData,
-                elapsedTime: elapsedTime
+                elapsedTime: elapsedTime,
+                significantGenes,
+                resultsDir: resultsDirRelative
             });
         } else {
             console.error(`Python script failed with code ${code}`);
