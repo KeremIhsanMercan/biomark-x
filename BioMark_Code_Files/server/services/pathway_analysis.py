@@ -1,6 +1,8 @@
 import json
 import os
 import sys
+import uuid
+from datetime import datetime
 from typing import List
 
 import pandas as pd
@@ -46,14 +48,18 @@ def perform_kegg_pathway_analysis(
                 },
             }
 
-        # Perform enrichment analysis using gseapy
         enrichment = enrichr(gene_list=sanitized, gene_sets=DEFAULT_GENE_SET, organism=organism)
         results = getattr(enrichment, "results", pd.DataFrame())
+
+        run_id = datetime.utcnow().strftime("%Y%m%d-%H%M%S") + f"_{uuid.uuid4().hex[:6]}"
 
         if results.empty:
             summary = "No KEGG pathways were returned for the provided genes."
             output_dir = ensure_output_directory(results_dir, class_pair)
-            output_path = os.path.join(output_dir, "kegg_pathway_analysis_results.csv")
+            output_path = os.path.join(
+                output_dir,
+                f"kegg_pathway_analysis_results_{run_id}.csv",
+            )
             results.to_csv(output_path, index=False)
             return {
                 "success": True,
@@ -65,6 +71,7 @@ def perform_kegg_pathway_analysis(
                     "totalPathways": 0,
                     "inputGeneCount": len(sanitized),
                     "classPair": class_pair or None,
+                    "runId": run_id,
                 },
             }
 
@@ -76,7 +83,10 @@ def perform_kegg_pathway_analysis(
             significant_pathways = pd.DataFrame()
 
         output_dir = ensure_output_directory(results_dir, class_pair)
-        output_path = os.path.join(output_dir, "kegg_pathway_analysis_results.csv")
+        output_path = os.path.join(
+            output_dir,
+            f"kegg_pathway_analysis_results_{run_id}.csv",
+        )
 
         export_frame = significant_pathways if not significant_pathways.empty else results
         export_frame.to_csv(output_path, index=False)
@@ -98,6 +108,7 @@ def perform_kegg_pathway_analysis(
                 "totalPathways": total_count,
                 "inputGeneCount": len(sanitized),
                 "classPair": class_pair or None,
+                "runId": run_id,
             },
         }
     except Exception as exc:
@@ -113,9 +124,9 @@ def perform_kegg_pathway_analysis(
                 "totalPathways": 0,
                 "inputGeneCount": len(analysis_results) if analysis_results else 0,
                 "classPair": class_pair or None,
+                "runId": None,
             },
         }
-
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

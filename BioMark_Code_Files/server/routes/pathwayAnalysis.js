@@ -75,6 +75,8 @@ router.post('/pathway-analysis', async (req, res) => {
     classPair,
   ];
 
+  console.log('Starting pathway analysis with command:', pythonCommand, pythonArgs.join(' '));
+
   const python = spawn(pythonCommand, pythonArgs);
   let stdout = '';
   let stderr = '';
@@ -107,6 +109,7 @@ router.post('/pathway-analysis', async (req, res) => {
 
     try {
       const parsed = JSON.parse(stdout.trim());
+      console.log('Pathway analysis output:', parsed);
 
       if (parsed?.data?.pathwayResults) {
         parsed.data.pathwayResults = toRelativeResultPath(parsed.data.pathwayResults);

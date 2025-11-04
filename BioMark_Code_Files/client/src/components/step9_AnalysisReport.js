@@ -3,6 +3,106 @@ import jsPDF from 'jspdf';
 import '../css/step9-generateAnalysisReport.css';
 import { buildUrl } from '../api';
 
+const MAX_PATHWAY_ROWS = 10;
+
+const extractField = (row, candidates) => {
+  if (!row || typeof row !== 'object') {
+    return undefined;
+  }
+
+  for (const key of candidates) {
+    if (row[key] !== undefined && row[key] !== null && String(row[key]).length > 0) {
+      return row[key];
+    }
+  }
+
+  return undefined;
+};
+
+const formatPValue = (value) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return value !== undefined && value !== null && String(value).length > 0 ? String(value) : 'N/A';
+  }
+  if (numeric === 0) {
+    return '< 1e-4';
+  }
+  if (numeric >= 0.01) {
+    return numeric.toFixed(3);
+  }
+  return numeric.toExponential(2);
+};
+
+const formatNumericValue = (value) => {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) {
+    return value !== undefined && value !== null && String(value).length > 0 ? String(value) : 'N/A';
+  }
+  if (numeric >= 100 || numeric <= 0.01) {
+    return numeric.toExponential(2);
+  }
+  return numeric.toFixed(2);
+};
+
+const formatGeneList = (value) => {
+  if (!value) {
+    return 'N/A';
+  }
+
+  if (Array.isArray(value)) {
+    const joined = value
+      .map((gene) => String(gene).trim())
+      .filter(Boolean)
+      .join(', ');
+    return joined.length > 0 ? joined : 'N/A';
+  }
+
+  const normalized = String(value)
+    .split(/[;|,]/)
+    .map((gene) => gene.trim())
+    .filter((gene) => gene.length > 0)
+    .join(', ');
+
+  return normalized.length > 0 ? normalized : 'N/A';
+};
+
+const preparePathwayRows = (terms = [], limit = MAX_PATHWAY_ROWS) => {
+  if (!Array.isArray(terms)) {
+    return [];
+  }
+
+  return terms
+    .filter((row) => row && typeof row === 'object')
+    .slice(0, limit)
+    .map((row, idx) => {
+      const termName =
+        extractField(row, ['Term', 'term', 'Pathway', 'pathway', 'Name', 'name']) || `Pathway ${idx + 1}`;
+      const overlap = extractField(row, ['Overlap', 'overlap']) || 'N/A';
+      const adjustedValue = extractField(row, ['Adjusted P-value', 'Adjusted P-Value', 'AdjustedPValue', 'Adjusted_p_value']);
+      const rawValue = extractField(row, ['P-value', 'P-Value', 'pValue', 'PValue']);
+      const oddsRatioValue = extractField(row, ['Odds Ratio', 'Odds ratio', 'OddsRatio']);
+      const genes = extractField(row, ['Genes', 'genes', 'Gene Names', 'GeneNames', 'Gene names']);
+
+      return {
+        index: idx,
+        termName,
+        overlap,
+        adjustedValue,
+        rawValue,
+        oddsRatioValue,
+        genes,
+      };
+    });
+};
+
+const countPathwayRows = (terms = []) => {
+  if (!Array.isArray(terms)) {
+    return 0;
+  }
+
+  return terms.filter((row) => row && typeof row === 'object').length;
+};
+
 // Component for generating biomarker analysis report
 const AnalysisReport = ({ 
   analysisResults, // This prop should have the enriched structure described above
@@ -35,6 +135,33 @@ const AnalysisReport = ({
       return acc;
     }, {});
   }, [analysisResults]);
+
+  const hasStatisticalSection = Array.isArray(summarizeAnalyses) && summarizeAnalyses.length > 0;
+
+  const hasPathwaySection = useMemo(() => {
+    return Object.values(groupedAnalyses).some((analyses) =>
+      analyses.some((analysis) => {
+        const pathway = analysis.pathway;
+        if (!pathway) {
+          return false;
+        }
+
+        const hasTerms = Array.isArray(pathway.terms) && pathway.terms.length > 0;
+        return Boolean(pathway.summary || pathway.csvPath || pathway.error || hasTerms);
+      })
+    );
+  }, [groupedAnalyses]);
+
+  const sectionNumbers = useMemo(() => {
+    let number = 1;
+    const summary = number;
+    number += 1;
+    const stat = hasStatisticalSection ? number++ : null;
+    const pathway = hasPathwaySection ? number++ : null;
+    const analysisCharts = number;
+
+    return { summary, stat, pathway, analysisCharts };
+  }, [hasStatisticalSection, hasPathwaySection]);
   
   // Load logo as DataURL for PDF
   useEffect(() => {
@@ -104,7 +231,8 @@ const AnalysisReport = ({
       // 30mm space for logo and title
       const topMargin = 40;
       
-      let yPosition = topMargin;
+    let yPosition = topMargin;
+    let currentSectionNumber = 1;
       
       // ----- COVER TITLE -----
       
@@ -186,7 +314,7 @@ const AnalysisReport = ({
       pdf.setFontSize(16);
       pdf.setTextColor(60, 60, 60);
       pdf.setFont('helvetica', 'bold');
-      pdf.text('1. Analysis Summary', marginLeft, yPosition);
+  pdf.text(`${currentSectionNumber}. Analysis Summary`, marginLeft, yPosition);
       yPosition += 10;
       
       // Bottom line
@@ -293,13 +421,15 @@ const AnalysisReport = ({
       }
       yPosition += 10;
 
+      currentSectionNumber += 1;
+
       // ----- STATISTICAL ANALYSIS RESULTS -----
-      if (summarizeAnalyses && summarizeAnalyses.length > 0) {
+      if (hasStatisticalSection) {
         // Section title
         pdf.setFontSize(16);
         pdf.setTextColor(60, 60, 60);
         pdf.setFont('helvetica', 'bold');
-        pdf.text('2. Statistical Method Results', marginLeft, yPosition);
+        pdf.text(`${currentSectionNumber}. Statistical Method Results`, marginLeft, yPosition);
         yPosition += 10;
         
         // Bottom line
@@ -375,8 +505,258 @@ const AnalysisReport = ({
           }
           yPosition += 10;
         }
+        currentSectionNumber += 1;
       }
       
+      if (hasPathwaySection) {
+        if (yPosition > pageHeight - 40) { pdf.addPage(); yPosition = topMargin - 20; }
+
+        pdf.setFontSize(16);
+        pdf.setTextColor(60, 60, 60);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(`${currentSectionNumber}. Pathway Analysis`, marginLeft, yPosition);
+        yPosition += 10;
+
+        pdf.setDrawColor(74, 109, 167);
+        pdf.setLineWidth(0.5);
+        pdf.line(marginLeft, yPosition, marginLeft + 65, yPosition);
+        yPosition += 15;
+
+        for (const [classPair, analysesInGroup] of Object.entries(groupedAnalyses)) {
+          const analysesWithPathway = analysesInGroup.filter((analysis) => analysis.pathway);
+          if (!analysesWithPathway.length) {
+            continue;
+          }
+
+          if (yPosition > pageHeight - 60) { pdf.addPage(); yPosition = topMargin - 20; }
+
+          pdf.setFontSize(13);
+          pdf.setFont('helvetica', 'bold');
+          pdf.setTextColor(70, 70, 70);
+          pdf.text(classPair, marginLeft, yPosition);
+          yPosition += lineHeight;
+
+          pdf.setDrawColor(190, 190, 190);
+          pdf.setLineWidth(0.3);
+          pdf.line(marginLeft, yPosition, pageWidth - marginRight, yPosition);
+          yPosition += lineHeight;
+
+          analysesWithPathway.forEach((analysis, idxWithinPathway) => {
+            if (yPosition > pageHeight - 60) { pdf.addPage(); yPosition = topMargin - 20; }
+
+            pdf.setFontSize(11);
+            pdf.setFont('helvetica', 'bold');
+            pdf.setTextColor(75, 75, 75);
+            const analysisTitle = analysis.title
+              ? analysis.title.replace(/Analysis \d+/, `Analysis ${idxWithinPathway + 1}`)
+              : `Analysis ${idxWithinPathway + 1}`;
+            pdf.text(`${analysisTitle} Pathway Summary`, marginLeft + 5, yPosition);
+            yPosition += lineHeight;
+
+            pdf.setFontSize(10);
+            pdf.setFont('helvetica', 'normal');
+            pdf.setTextColor(80, 80, 80);
+
+            if (analysis.pathway?.summary) {
+              const summaryLines = pdf.splitTextToSize(analysis.pathway.summary, contentWidth - 15);
+              pdf.text(summaryLines, marginLeft + 10, yPosition);
+              yPosition += lineHeight * summaryLines.length;
+            }
+
+            if (analysis.pathway?.error) {
+              pdf.setFont('helvetica', 'italic');
+              pdf.setTextColor(180, 40, 40);
+              const errorLines = pdf.splitTextToSize(`Note: ${analysis.pathway.error}`, contentWidth - 15);
+              pdf.text(errorLines, marginLeft + 10, yPosition);
+              yPosition += lineHeight * errorLines.length;
+              pdf.setFont('helvetica', 'normal');
+              pdf.setTextColor(80, 80, 80);
+            }
+
+            const metrics = [];
+            if (analysis.pathway?.inputGeneCount !== null && analysis.pathway?.inputGeneCount !== undefined) {
+              metrics.push(`Input genes: ${analysis.pathway.inputGeneCount}`);
+            }
+            if (analysis.pathway?.totalPathways !== null && analysis.pathway?.totalPathways !== undefined) {
+              metrics.push(`Total pathways: ${analysis.pathway.totalPathways}`);
+            }
+            if (analysis.pathway?.significantPathwayCount !== null && analysis.pathway?.significantPathwayCount !== undefined) {
+              metrics.push(`Significant (<= 0.05): ${analysis.pathway.significantPathwayCount}`);
+            }
+
+            if (metrics.length > 0) {
+              const metricsLines = pdf.splitTextToSize(metrics.join(' \u2022 '), contentWidth - 15);
+              pdf.text(metricsLines, marginLeft + 10, yPosition);
+              yPosition += lineHeight * metricsLines.length;
+            }
+
+            const topRows = preparePathwayRows(analysis.pathway?.terms, MAX_PATHWAY_ROWS);
+
+            if (topRows.length > 0) {
+              const columns = [
+                { key: 'index', header: '#', width: 8, align: 'center' },
+                { key: 'termName', header: 'Pathway', width: 50, align: 'left' },
+                { key: 'overlap', header: 'Overlap', width: 18, align: 'center' },
+                { key: 'adjusted', header: 'Adjusted p-value', width: 24, align: 'center' },
+                { key: 'raw', header: 'Raw p-value', width: 22, align: 'center' },
+                { key: 'odds', header: 'Odds ratio', width: 18, align: 'center' },
+                { key: 'genes', header: 'Genes', width: 30, align: 'left' }
+              ];
+              const baseLineHeight = 4.2;
+              const cellPadding = 1.5;
+              const headerFontSize = 10;
+              const bodyFontSize = 9;
+
+              const formattedRows = topRows.map((row) => {
+                const genesFormatted = formatGeneList(row.genes);
+                const geneParts = genesFormatted === 'N/A' ? [] : genesFormatted.split(', ');
+                const truncatedGenes = genesFormatted === 'N/A'
+                  ? 'N/A'
+                  : geneParts.slice(0, 10).join(', ') + (geneParts.length > 10 ? ', ...' : '');
+
+                return {
+                  index: String(row.index + 1),
+                  termName: row.termName,
+                  overlap: row.overlap || 'N/A',
+                  adjusted: formatPValue(row.adjustedValue),
+                  raw: formatPValue(row.rawValue),
+                  odds: formatNumericValue(row.oddsRatioValue),
+                  genes: truncatedGenes
+                };
+              });
+
+              pdf.setFont('helvetica', 'bold');
+              pdf.setFontSize(headerFontSize);
+              const headerLines = columns.map((column) => {
+                const lines = pdf.splitTextToSize(column.header, column.width - cellPadding * 2);
+                return lines.length ? lines : [column.header];
+              });
+              const headerHeight = Math.max(
+                ...headerLines.map((lines) => Math.max(lines.length, 1))
+              ) * baseLineHeight + cellPadding * 2;
+              const tableWidth = columns.reduce((sum, col) => sum + col.width, 0);
+
+              const drawHeader = () => {
+                if (yPosition + headerHeight > pageHeight - 30) {
+                  pdf.addPage();
+                  yPosition = topMargin - 20;
+                }
+                const headerTop = yPosition;
+                const tableLeft = marginLeft + 5;
+                let columnX = tableLeft;
+                pdf.setFillColor(230, 235, 246);
+                pdf.setDrawColor(190, 190, 190);
+                pdf.setLineWidth(0.2);
+                pdf.rect(tableLeft, headerTop, tableWidth, headerHeight, 'F');
+                pdf.setFont('helvetica', 'bold');
+                pdf.setFontSize(headerFontSize);
+                columns.forEach((column, idx) => {
+                  const lines = headerLines[idx];
+                  pdf.rect(columnX, headerTop, column.width, headerHeight);
+                  const textStartY = headerTop + cellPadding + baseLineHeight;
+                  if (column.align === 'center') {
+                    const centerX = columnX + column.width / 2;
+                    lines.forEach((line, lineIdx) => {
+                      pdf.text(line, centerX, textStartY + lineIdx * baseLineHeight, { align: 'center' });
+                    });
+                  } else {
+                    lines.forEach((line, lineIdx) => {
+                      pdf.text(line, columnX + cellPadding, textStartY + lineIdx * baseLineHeight, { align: 'left' });
+                    });
+                  }
+                  columnX += column.width;
+                });
+                yPosition += headerHeight;
+                pdf.setFont('helvetica', 'normal');
+                pdf.setFontSize(bodyFontSize);
+              };
+
+              drawHeader();
+
+              formattedRows.forEach((row) => {
+                const splitTexts = columns.map((column) => {
+                  const cellValue = row[column.key];
+                  return pdf.splitTextToSize(cellValue, column.width - cellPadding * 2);
+                });
+
+                const rowHeight = Math.max(
+                  ...splitTexts.map((lines) => Math.max(lines.length, 1))
+                ) * baseLineHeight + cellPadding * 2;
+
+                if (yPosition + rowHeight > pageHeight - 30) {
+                  pdf.addPage();
+                  yPosition = topMargin - 20;
+                  drawHeader();
+                }
+
+                let cellX = marginLeft + 5;
+                columns.forEach((column, idx) => {
+                  const cellHeight = rowHeight;
+                  pdf.rect(cellX, yPosition, column.width, cellHeight);
+                  const lines = splitTexts[idx];
+                  const textStartY = yPosition + cellPadding + 3;
+                  if (column.align === 'center') {
+                    const centerX = cellX + column.width / 2;
+                    lines.forEach((line, lineIdx) => {
+                      pdf.text(line, centerX, textStartY + lineIdx * baseLineHeight, {
+                        align: 'center',
+                      });
+                    });
+                  } else {
+                    lines.forEach((line, lineIdx) => {
+                      pdf.text(line, cellX + cellPadding, textStartY + lineIdx * baseLineHeight, {
+                        align: 'left',
+                      });
+                    });
+                  }
+                  cellX += column.width;
+                });
+
+                yPosition += rowHeight;
+              });
+
+              yPosition += 4;
+            }
+
+            const totalRows = countPathwayRows(analysis.pathway?.terms);
+            if (analysis.pathway?.terms && totalRows > topRows.length) {
+              pdf.setFont('helvetica', 'italic');
+              pdf.setTextColor(110, 110, 110);
+              pdf.text(
+                `Additional ${totalRows - topRows.length} pathways are available in the CSV file.`,
+                marginLeft + 10,
+                yPosition
+              );
+              yPosition += lineHeight;
+              pdf.setFont('helvetica', 'normal');
+              pdf.setTextColor(80, 80, 80);
+            }
+
+            if (analysis.pathway?.csvPath) {
+              const csvLink = analysis.pathway.csvPath.startsWith('http')
+                ? analysis.pathway.csvPath
+                : buildUrl(`/${analysis.pathway.csvPath}`);
+              pdf.setFont('helvetica', 'italic');
+              pdf.setTextColor(60, 60, 140);
+              if (typeof pdf.textWithLink === 'function') {
+                pdf.textWithLink('Download', marginLeft + 10, yPosition, { url: csvLink });
+              } else {
+                pdf.text('Download', marginLeft + 10, yPosition);
+              }
+              yPosition += lineHeight;
+              pdf.setFont('helvetica', 'normal');
+              pdf.setTextColor(80, 80, 80);
+            }
+
+            yPosition += 4;
+          });
+
+          yPosition += 6;
+        }
+
+        currentSectionNumber += 1;
+      }
+
       // ----- DETAILED ANALYSIS RESULTS (Charts) -----
       if (Object.keys(groupedAnalyses).length > 0) {
         if (yPosition > pageHeight - 40) { pdf.addPage(); yPosition = topMargin - 20; }
@@ -384,7 +764,7 @@ const AnalysisReport = ({
         pdf.setFontSize(16);
         pdf.setTextColor(60, 60, 60);
         pdf.setFont('helvetica', 'bold');
-        pdf.text(`${summarizeAnalyses && summarizeAnalyses.length > 0 ? '3' : '2'}. Analysis Results`, marginLeft, yPosition);
+        pdf.text(`${currentSectionNumber}. Analysis Results`, marginLeft, yPosition);
         yPosition += 10;
         
         // Bottom line
@@ -564,7 +944,7 @@ const AnalysisReport = ({
         title="Generate a professional PDF report of your analysis results"
         disabled={loading}
       >
-        <i className="report-icon">{loading ? '⏳' : '📊'}</i>
+        <i className="report-icon">{loading ? '➳' : '📊'}</i>
         {loading ? 'Generating Report...' : 'Generate Analysis Report'}
       </button>
       
@@ -601,7 +981,7 @@ const AnalysisReport = ({
 
           {/* Analysis Summary */}
           <div className="report-section">
-            <h3>1. Analysis Summary</h3>
+            <h3>{sectionNumbers.summary}. Analysis Summary</h3>
             {datasetFileName && (
               <div className="info-row">
                 <span className="label">Dataset Filename:</span>
@@ -657,9 +1037,9 @@ const AnalysisReport = ({
           </div>
 
           {/* Statistical Analysis Results */}
-          {summarizeAnalyses && summarizeAnalyses.length > 0 && (
+          {hasStatisticalSection && (
             <div className="report-section">
-              <h3>2. Statistical Method Results</h3>
+              <h3>{sectionNumbers.stat}. Statistical Method Results</h3>
               {summarizeAnalyses.map((analysis, index) => (
                 // Add data-classpair to help PDF image selector
                 <div key={index} className="summary-section" data-classpair={analysis.classPair}>
@@ -676,10 +1056,117 @@ const AnalysisReport = ({
             </div>
           )}
 
+          {/* Pathway Analysis Results */}
+          {hasPathwaySection && (
+            <div className="report-section">
+              <h3>{sectionNumbers.pathway}. Pathway Analysis</h3>
+              {Object.entries(groupedAnalyses).map(([classPair, analysesInGroup]) => {
+                const analysesWithPathway = analysesInGroup.filter((analysis) => analysis.pathway);
+                if (!analysesWithPathway.length) {
+                  return null;
+                }
+
+                return (
+                  <div key={classPair} className="pathway-report-group">
+                    <h4>{classPair}</h4>
+                    {analysesWithPathway.map((analysis, index) => {
+                      const topRows = preparePathwayRows(analysis.pathway?.terms, MAX_PATHWAY_ROWS);
+                      const totalRows = countPathwayRows(analysis.pathway?.terms);
+                      const csvHref = analysis.pathway?.csvPath
+                        ? (analysis.pathway.csvPath.startsWith('http')
+                            ? analysis.pathway.csvPath
+                            : buildUrl(`/${analysis.pathway.csvPath}`))
+                        : null;
+
+                      return (
+                        <div key={analysis.title || index} className="pathway-report-item pathway-results-card">
+                          <h5>{analysis.title ? analysis.title.replace(/Analysis \d+/, `Analysis ${index + 1}`) : `Analysis ${index + 1}`}</h5>
+                          {analysis.pathway?.summary && (
+                            <p className="pathway-summary-text">{analysis.pathway.summary}</p>
+                          )}
+                          {analysis.pathway?.error && (
+                            <p className="pathway-error-state pathway-inline-error">{analysis.pathway.error}</p>
+                          )}
+                          <div className="pathway-results-metrics">
+                            {analysis.pathway?.inputGeneCount !== null && analysis.pathway?.inputGeneCount !== undefined && (
+                              <span className="pathway-metric-pill">Input genes: {analysis.pathway.inputGeneCount}</span>
+                            )}
+                            {analysis.pathway?.totalPathways !== null && analysis.pathway?.totalPathways !== undefined && (
+                              <span className="pathway-metric-pill">Total pathways: {analysis.pathway.totalPathways}</span>
+                            )}
+                            {analysis.pathway?.significantPathwayCount !== null && analysis.pathway?.significantPathwayCount !== undefined && (
+                              <span className="pathway-metric-pill">Significant (&le; 0.05): {analysis.pathway.significantPathwayCount}</span>
+                            )}
+                          </div>
+                          {csvHref && (
+                            <p className="pathway-download">
+                              <a
+                                className="pathway-download-link"
+                                href={csvHref}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                aria-label="Download full pathway results as CSV"
+                              >
+                                Download
+                              </a>
+                            </p>
+                          )}
+                          {topRows.length > 0 && (
+                            <div className="pathway-table-wrapper">
+                              <table className="pathway-results-table">
+                                <thead>
+                                  <tr>
+                                    <th>#</th>
+                                    <th>Pathway</th>
+                                    <th>Overlap</th>
+                                    <th>Adjusted p-value</th>
+                                    <th>Raw p-value</th>
+                                    <th>Odds ratio</th>
+                                    <th>Genes</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {topRows.map((row) => {
+                                    const genesFormatted = formatGeneList(row.genes);
+                                    const geneParts = genesFormatted === 'N/A' ? [] : genesFormatted.split(', ');
+                                    const truncatedGenes = genesFormatted === 'N/A'
+                                      ? 'N/A'
+                                      : geneParts.slice(0, 12).join(', ') + (geneParts.length > 12 ? ', ...' : '');
+
+                                    return (
+                                      <tr key={`${row.termName}-${row.index}`}>
+                                        <td>{row.index + 1}</td>
+                                        <td className="pathway-term">{row.termName}</td>
+                                        <td>{row.overlap || 'N/A'}</td>
+                                        <td>{formatPValue(row.adjustedValue)}</td>
+                                        <td>{formatPValue(row.rawValue)}</td>
+                                        <td>{formatNumericValue(row.oddsRatioValue)}</td>
+                                        <td className="pathway-genes">{truncatedGenes}</td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                          {analysis.pathway?.terms && totalRows > topRows.length && (
+                            <p className="pathway-note">
+                              Additional {totalRows - topRows.length} pathways are available in the downloaded CSV.
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
           {/* Detailed Analysis Results (Charts) */}
           {Object.keys(groupedAnalyses).length > 0 && (
             <div className="report-section">
-              <h3>{summarizeAnalyses && summarizeAnalyses.length > 0 ? '3' : '2'}. Analysis Results</h3>
+              <h3>{sectionNumbers.analysisCharts}. Analysis Results</h3>
               {Object.entries(groupedAnalyses).map(([classPair, analysesInGroup]) => (
                 <div key={classPair} className="class-pair-results-group">
                   <h4>{classPair}</h4>

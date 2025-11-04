@@ -152,6 +152,24 @@
   color: #999;
 }
 
+.pathway-report-group {
+  margin-bottom: 24px;
+}
+
+.pathway-report-item {
+  margin-bottom: 20px;
+  padding: 16px;
+}
+
+.pathway-report-item h5 {
+  margin-top: 0;
+  margin-bottom: 12px;
+}
+
+.pathway-download {
+  margin: 10px 0;
+}
+
 /* PDF loading overlay */
 .loading-overlay {
   position: fixed;

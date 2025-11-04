@@ -123,7 +123,71 @@ function parseRankedFeaturesCsv(csvContent, limit) {
     return features;
 }
 
-function readTopRankedFeatures({ filePath, selectedClasses, limit = 20 }) {
+function sanitizeClassToken(token) {
+    return String(token || '').trim().replace(/\s+/g, '_');
+}
+
+function extractClassPairVariants(selectedClasses) {
+    if (!Array.isArray(selectedClasses) || selectedClasses.length < 2) {
+        return [];
+    }
+
+    const first = sanitizeClassToken(selectedClasses[0]);
+    const second = sanitizeClassToken(selectedClasses[1]);
+    if (!first || !second) {
+        return [];
+    }
+
+    const variants = new Set();
+    variants.add(`${first}_${second}`);
+    variants.add(`${second}_${first}`);
+    return Array.from(variants);
+}
+
+function readFeatureImportances({ fileNameWithoutExt, classPairCandidates, method, limit }) {
+    if (!method) {
+        return [];
+    }
+
+    const importancesPath = path.join(__dirname, 'results', fileNameWithoutExt, 'feature_importances.json');
+    if (!fs.existsSync(importancesPath)) {
+        return [];
+    }
+
+    try {
+        const parsed = JSON.parse(fs.readFileSync(importancesPath, 'utf8'));
+        const methodKey = method.toLowerCase();
+        const candidateKeys = classPairCandidates.length > 0 ? classPairCandidates : Object.keys(parsed);
+
+        for (const key of candidateKeys) {
+            const entry = parsed[key];
+            if (!entry || typeof entry !== 'object') {
+                continue;
+            }
+
+            const methodValues = entry[methodKey];
+            if (!methodValues || typeof methodValues !== 'object') {
+                continue;
+            }
+
+            const sorted = Object.entries(methodValues)
+                .filter(([, score]) => typeof score === 'number')
+                .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]));
+
+            if (sorted.length === 0) {
+                continue;
+            }
+
+            return sorted.slice(0, limit).map(([feature]) => feature);
+        }
+    } catch (err) {
+        console.error('Failed to read feature importances for pathway analysis:', err);
+    }
+
+    return [];
+}
+
+function readTopRankedFeatures({ filePath, selectedClasses, differentialMethods = [], limit = 20 }) {
     try {
         if (!filePath) {
             return [];
@@ -131,13 +195,27 @@ function readTopRankedFeatures({ filePath, selectedClasses, limit = 20 }) {
 
         const baseName = path.basename(filePath);
         const fileNameWithoutExt = path.parse(baseName).name;
-        const classPairKey = Array.isArray(selectedClasses) && selectedClasses.length >= 2
-            ? `${String(selectedClasses[0]).trim()}_${String(selectedClasses[1]).trim()}`
-            : null;
+        const classPairCandidates = extractClassPairVariants(selectedClasses);
+        const normalizedDifferential = Array.isArray(differentialMethods)
+            ? differentialMethods.map((method) => String(method || '').trim().toLowerCase()).filter(Boolean)
+            : [];
+
+        // const importanceDrivenMethods = normalizedDifferential.filter((method) => method === 'shap' || method === 'lime');
+        for (const method of normalizedDifferential) {
+            const features = readFeatureImportances({
+                fileNameWithoutExt,
+                classPairCandidates,
+                method,
+                limit,
+            });
+            if (features.length > 0) {
+                return features;
+            }
+        }
 
         const candidates = [];
-        if (classPairKey) {
-            candidates.push(path.join(__dirname, 'results', fileNameWithoutExt, 'feature_ranking', classPairKey, 'ranked_features_df.csv'));
+        for (const candidateKey of classPairCandidates) {
+            candidates.push(path.join(__dirname, 'results', fileNameWithoutExt, 'feature_ranking', candidateKey, 'ranked_features_df.csv'));
         }
         candidates.push(path.join(__dirname, 'results', fileNameWithoutExt, 'ranked_features_df.csv'));
 
@@ -685,6 +763,7 @@ app.post('/analyze', (req, res) => {
             const significantGenes = readTopRankedFeatures({
                 filePath,
                 selectedClasses,
+                differentialMethods: differential,
                 limit: Number(numTopFeatures) > 0 ? Number(numTopFeatures) : 20
             });
 

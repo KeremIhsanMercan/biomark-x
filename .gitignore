@@ -1,4 +1,3 @@
-# Node
 
 BioMark_Code_Files/client/node_modules/
 BioMark_Code_Files/server/node_modules/
@@ -7,10 +6,9 @@ BioMark_Code_Files/client/package-lock.json
 BioMark_Code_Files/server/package-lock.json
 package-lock.json
 
-
+BioMark_Code_Files/client/build/
 BioMark_Code_Files/server/uploads/
 BioMark_Code_Files/server/results/
-
 
 BioMark_Code_Files/server/logs/
 

@@ -167,6 +167,16 @@ function App() {
       };
     });
   };
+
+  const normalizeClassPair = (classes) => {
+    if (!Array.isArray(classes)) {
+      return [];
+    }
+
+    return [...classes]
+      .map((cls) => (typeof cls === 'string' ? cls : String(cls ?? '')))
+      .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }));
+  };
   
   // Helper Function: General function to fetch all columns (will use this function)
   const fetchAllColumnsGeneric = async (filePath) => { // filePath should be passed as a parameter
@@ -938,8 +948,9 @@ function App() {
   const handleClassSelection = async (newlySelectedClasses) => {
     // Ensure the array always has 2 elements (BarChartWithSelection should enforce this)
     if (Array.isArray(newlySelectedClasses) && newlySelectedClasses.length === 2) {
-        setselectedClasses(newlySelectedClasses);
-        console.log("Selected classes: ", newlySelectedClasses);
+        const normalizedSelection = normalizeClassPair(newlySelectedClasses);
+        setselectedClasses(normalizedSelection);
+        console.log("Selected classes (normalized):", normalizedSelection);
 
         // IMPORTANT: set the global illness column to the merged/step4-selected column
         // so subsequent analysis uses the column that produced these classes.
@@ -1037,7 +1048,7 @@ function App() {
 
     // Update states
     if (differential.length > 0) {
-      setIsDiffAnalysisClasses(selectedClasses); // This is also similar to selectedClasses
+      setIsDiffAnalysisClasses(normalizeClassPair(selectedClasses)); // This is also similar to selectedClasses
     } else {
         setIsDiffAnalysisClasses([]);
     }
@@ -1134,11 +1145,13 @@ function App() {
          return;
      }
 
+    const normalizedSelectedClasses = normalizeClassPair(selectedClasses);
+
     const payload = {
       filePath: uploadedInfo.filePath,
       IlnessColumnName: selectedIllnessColumn,
       SampleColumnName: selectedSampleColumn,
-      selectedClasses: selectedClasses,
+      selectedClasses: normalizedSelectedClasses,
       differential: selectedAnalyzes.differential,
       clustering: selectedAnalyzes.clustering,
       classification: selectedAnalyzes.classification,
@@ -1172,7 +1185,7 @@ function App() {
   setAnalyzing(true);
 
     try {
-      const response = await api.post('/analyze', payload);
+  const response = await api.post('/analyze', payload);
       console.log("Analysis response:", response.data);
       if (response.data.success) {
       const significantGenes = response.data.significantGenes || [];
@@ -1766,6 +1779,7 @@ function App() {
           inputGeneCount: payload.inputGeneCount ?? significantGenes.length,
           totalPathways: payload.totalPathways ?? parsedRows.length,
           significantPathwayCount: payload.significantPathwayCount ?? fallbackSignificantCount,
+          runId: payload.runId ?? null,
         },
       });
     } catch (error) {
@@ -2614,6 +2628,25 @@ function App() {
                   <AnalysisReport
                     analysisResults={previousAnalyses.map((analysis, idx) => {
                       const analysisParams = analysis.parameters; // Parameters specific to each analysis (payload)
+                      const pathwayStateForReport = pathwayStates[String(idx)] ?? createEmptyPathwayState();
+                      const pathwayResultForReport = pathwayStateForReport.result;
+                      const pathwayTermsForReport = Array.isArray(pathwayStateForReport.terms)
+                        ? pathwayStateForReport.terms
+                        : [];
+                      const pathwayErrorForReport = pathwayStateForReport.error || null;
+
+                      const pathwayInfo = (pathwayResultForReport || pathwayErrorForReport)
+                        ? {
+                            summary: pathwayResultForReport?.summary || null,
+                            csvPath: pathwayResultForReport?.csvPath || null,
+                            inputGeneCount: pathwayResultForReport?.inputGeneCount ?? null,
+                            totalPathways:
+                              pathwayResultForReport?.totalPathways ?? (pathwayResultForReport ? pathwayTermsForReport.length : null),
+                            significantPathwayCount: pathwayResultForReport?.significantPathwayCount ?? null,
+                            terms: pathwayTermsForReport,
+                            error: pathwayErrorForReport,
+                          }
+                        : null;
 
                       const images = analysis.results.map((imagePath, imgIdx) => {
                         const rawImageName = imagePath.split('/').pop();
@@ -2659,7 +2692,8 @@ function App() {
                           clustering: analysisParams.clustering || [],
                           classification: analysisParams.classification || []
                         },
-                        parameters: analysisParams // All other parameters that might be needed in the report
+                        parameters: analysisParams, // All other parameters that might be needed in the report
+                        pathway: pathwayInfo
                       };
                     })}
                     analysisDate={previousAnalyses[index]?.date || new Date().toLocaleDateString()}
